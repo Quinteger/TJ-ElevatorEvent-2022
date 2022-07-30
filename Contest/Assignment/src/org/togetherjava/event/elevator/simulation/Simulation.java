@@ -9,6 +9,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.stream.Collectors;
 import java.util.stream.LongStream;
 import java.util.stream.Stream;
 
@@ -151,5 +152,10 @@ public final class Simulation {
 
         long medianPercentage = 100 * medianSteps / stepCount;
         return (int) medianPercentage;
+    }
+
+    public void printCurrentStatistics() {
+        System.out.println(humanStatistics.stream()
+                .collect(Collectors.toMap((HumanStatistics stat) -> stat.getHuman().getCurrentState(), s -> 1, Integer::sum)));
     }
 }

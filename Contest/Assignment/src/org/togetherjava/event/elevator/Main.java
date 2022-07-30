@@ -1,7 +1,5 @@
 package org.togetherjava.event.elevator;
 
-import org.togetherjava.event.elevator.elevators.Elevator;
-import org.togetherjava.event.elevator.humans.Human;
 import org.togetherjava.event.elevator.simulation.Simulation;
 
 public final class Main {
@@ -19,10 +17,11 @@ public final class Main {
         // Eventually try out the randomly generated systems. If you want to debug a problem you encountered
         // with one of them, note down the seed that it prints at the beginning and then use the variant that takes this seed.
         // That way, it will generate the same system again, and you can repeat the test.
-        Simulation simulation = Simulation.createSingleElevatorSingleHumanSimulation();
-        // Simulation simulation = Simulation.createSimpleSimulation();
-        // Simulation simulation = Simulation.createRandomSimulation(5, 50, 10);
+//        Simulation simulation = Simulation.createSingleElevatorSingleHumanSimulation();
+//         Simulation simulation = Simulation.createSimpleSimulation();
+//         Simulation simulation = Simulation.createRandomSimulation(5, 50, 10);
         // Simulation simulation = Simulation.createRandomSimulation(putDesiredSeedHere, 5, 50, 10);
+        Simulation simulation = Simulation.createRandomSimulation(3, 100, 100_000, 50);
 
         simulation.printSummary();
 
@@ -33,7 +32,8 @@ public final class Main {
         while (!simulation.isDone()) {
             System.out.println("\tSimulation step " + simulation.getStepCount());
             simulation.step();
-            simulation.prettyPrint();
+//            simulation.prettyPrint();
+            simulation.printCurrentStatistics();
 
             if (simulation.getStepCount() >= 100_000) {
                 throw new IllegalStateException("Simulation aborted. All humans should have arrived"

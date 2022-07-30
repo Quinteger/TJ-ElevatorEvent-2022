@@ -21,4 +21,8 @@ final class HumanStatistics {
     long stepsForState(Human.State state) {
         return stateToStepCount.getOrDefault(state, 0L);
     }
+
+    public Human getHuman() {
+        return human;
+    }
 }

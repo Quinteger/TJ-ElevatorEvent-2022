@@ -1,6 +1,6 @@
 package org.togetherjava.event.elevator.elevators;
 
-import java.util.StringJoiner;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -14,7 +14,8 @@ public final class Elevator implements ElevatorPanel {
 
     private final int id;
     private final int minFloor;
-    private final int floorsServed;
+    private final int maxFloor;
+    public final Queue<Integer> targets = new ArrayDeque<>();
     private int currentFloor;
 
     /**
@@ -26,17 +27,21 @@ public final class Elevator implements ElevatorPanel {
      * @param currentFloor the floor the elevator starts at, must be within the defined range of floors served by the elevator
      */
     public Elevator(int minFloor, int floorsServed, int currentFloor) {
-        if (minFloor <= 0 || floorsServed < 2) {
-            throw new IllegalArgumentException("Min floor must at least 1, floors served at least 2.");
+        if (minFloor < 1) {
+            throw new IllegalArgumentException("Minimum floor must at least 1, got " + minFloor);
         }
-        if (currentFloor < minFloor || currentFloor >= minFloor + floorsServed) {
-            throw new IllegalArgumentException("The current floor must be between the floors served by the elevator.");
+        if (floorsServed < 2) {
+            throw new IllegalArgumentException("Amount of served floors must be at least 2, got " + floorsServed);
+        }
+        int maxFloor = minFloor + floorsServed - 1;
+        if (currentFloor < minFloor || maxFloor < currentFloor) {
+            throw new IllegalArgumentException("The current floor for this elevator must be between %d and %d, got %d".formatted(minFloor, maxFloor, currentFloor));
         }
 
         this.id = NEXT_ID.getAndIncrement();
         this.minFloor = minFloor;
+        this.maxFloor = maxFloor;
         this.currentFloor = currentFloor;
-        this.floorsServed = floorsServed;
     }
 
     @Override
@@ -48,8 +53,12 @@ public final class Elevator implements ElevatorPanel {
         return minFloor;
     }
 
+    public int getMaxFloor() {
+        return maxFloor;
+    }
+
     public int getFloorsServed() {
-        return floorsServed;
+        return maxFloor - minFloor + 1;
     }
 
     @Override
@@ -58,33 +67,149 @@ public final class Elevator implements ElevatorPanel {
     }
 
     @Override
-    public void requestDestinationFloor(int destinationFloor) {
-        // TODO Implement. This represents a human or the elevator system
-        //  itself requesting this elevator to eventually move to the given floor.
-        //  The elevator is supposed to memorize the destination in a way that
-        //  it can ensure to eventually reach it.
-        System.out.println("Request for destination floor received");
+    public synchronized void requestDestinationFloor(int destinationFloor) {
+        // This represents a human or the elevator system
+        // itself requesting this elevator to eventually move to the given floor.
+        // The elevator is supposed to memorize the destination in a way that
+        // it can ensure to eventually reach it.
+        rangeCheck(destinationFloor);
+
+        // Let's check if the work queue already contains the desired floor
+        if (!willVisitFloor(destinationFloor)) {
+            targets.add(destinationFloor);
+            System.out.printf("Elevator %d on floor %d has added floor %d to the queue, the queue is now %s%n", id, currentFloor, destinationFloor, targets);
+        }
     }
 
     public void moveOneFloor() {
-        // TODO Implement. Essentially there are three possibilities:
-        //  - move up one floor
-        //  - move down one floor
-        //  - stand still
-        //  The elevator is supposed to move in a way that it will eventually reach
-        //  the floors requested by Humans via requestDestinationFloor(), ideally "fast" but also "fair",
-        //  meaning that the average time waiting (either in corridor or inside the elevator)
-        //  is minimized across all humans.
-        //  It is essential that this method updates the currentFloor field accordingly.
-        System.out.println("Request to move a floor received");
+        // Implement. Essentially there are three possibilities:
+        // - move up one floor
+        // - move down one floor
+        // - stand still
+        // The elevator is supposed to move in a way that it will eventually reach
+        // the floors requested by Humans via requestDestinationFloor(), ideally "fast" but also "fair",
+        // meaning that the average time waiting (either in corridor or inside the elevator)
+        // is minimized across all humans.
+        // It is essential that this method updates the currentFloor field accordingly.
+        if (!targets.isEmpty()) {
+            int target = targets.element();
+            if (currentFloor < target) {
+                currentFloor++;
+            } else if (currentFloor > target) {
+                currentFloor--;
+            } else {
+                throw new IllegalArgumentException("Elevator has current floor as next target, this is a bug");
+            }
+            if (currentFloor == target) {
+                // We arrived at the next target
+                targets.remove();
+            }
+        }
     }
 
     @Override
     public synchronized String toString() {
         return new StringJoiner(", ", Elevator.class.getSimpleName() + "[", "]").add("id=" + id)
                 .add("minFloor=" + minFloor)
-                .add("floorsServed=" + floorsServed)
+                .add("maxFloor=" + maxFloor)
                 .add("currentFloor=" + currentFloor)
                 .toString();
+    }
+
+    /**
+     * @return whether this elevator can serve specified floors.
+     */
+    public boolean canServe(int... floors) {
+        for (int floor : floors) {
+            if (floor < minFloor || floor > maxFloor) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Throw an exception if the specified floor cannot be served by this elevator.
+     */
+    private void rangeCheck(int floor) {
+        if (!canServe(floor)) {
+            throw new IllegalArgumentException("Elevator cannot serve floor %d, only %d to %d are available".formatted(floor, minFloor, maxFloor));
+        }
+    }
+
+    /**
+     * @return whether this elevator is currently on the specified floor
+     * or will at some point visit that floor before all its tasks are done.
+     */
+    public boolean willVisitFloor(int floor) {
+        if (!canServe(floor)) {
+            return false;
+        }
+
+        if (floor == currentFloor) {
+            return true;
+        }
+
+        int previousTarget = currentFloor;
+        for (int nextTarget : targets) {
+            // If the target floor is already on the path between floors, return true
+            int min = Math.min(previousTarget, nextTarget);
+            int max = Math.max(previousTarget, nextTarget);
+            if (min <= floor && floor <= max) {
+                return true;
+            }
+            previousTarget = nextTarget;
+        }
+        return false;
+    }
+
+    /**
+     * @return the minimum amount of turns it would take for this elevator to visit a specified sequence of floors
+     * (either indirectly by passing by or by creating new tasks), or -1 if it's impossible.
+     * @implNote a choice was made to use {@code int} over {@link java.util.OptionalInt OptionalInt}
+     * since the amount of turns cannot be negative.
+     */
+    public int turnsToVisit(int... floors) {
+        if (floors.length == 0) {
+            return -1;
+        }
+
+        int count = 0;
+        int previousTarget = currentFloor;
+        Iterator<Integer> targetItr = targets.iterator();
+        Iterator<Integer> floorItr = Arrays.stream(floors).iterator();
+        int nextFloor = floorItr.next();
+        while (targetItr.hasNext()) {
+            int nextTarget = targetItr.next();
+
+            // While the next floor we're interested in lies on the path,
+            // we "chop off" part of the path, adding the length of that part to count
+            // we also advance the floor iterator, or return if the floor was last
+            while (previousTarget <= nextFloor && nextFloor <= nextTarget || previousTarget >= nextFloor && nextFloor >= nextTarget) {
+                count += Math.abs(nextFloor - previousTarget);
+                previousTarget = nextFloor;
+                if (floorItr.hasNext()) {
+                    nextFloor = floorItr.next();
+                } else {
+                    return count;
+                }
+            }
+            count += Math.abs(nextTarget - previousTarget);
+
+            previousTarget = nextTarget;
+        }
+
+        // The floor currently at nextFloor is guaranteed to be unprocessed
+        count += Math.abs(nextFloor - previousTarget);
+        previousTarget = nextFloor;
+        // If after traversing the queue we haven't covered all floors that we wanted,
+        // simulate adding them to the queue
+        while (floorItr.hasNext()) {
+            nextFloor = floorItr.next();
+            count += Math.abs(nextFloor - previousTarget);
+            previousTarget = nextFloor;
+        }
+
+        return count;
     }
 }
