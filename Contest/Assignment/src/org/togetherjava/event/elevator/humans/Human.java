@@ -1,5 +1,6 @@
 package org.togetherjava.event.elevator.humans;
 
+import lombok.Getter;
 import org.togetherjava.event.elevator.elevators.ElevatorPanel;
 import org.togetherjava.event.elevator.elevators.FloorPanelSystem;
 import org.togetherjava.event.elevator.elevators.TravelDirection;
@@ -15,9 +16,9 @@ import java.util.StringJoiner;
  * for example requesting an elevator, eventually entering and exiting them.
  */
 public final class Human implements ElevatorListener {
-    private State currentState;
-    private final int startingFloor;
-    private final int destinationFloor;
+    @Getter private State currentState;
+    @Getter private final int startingFloor;
+    @Getter private final int destinationFloor;
     /**
      * If the human is currently inside an elevator, this is its unique ID.
      * Otherwise, this is {@code null} to indicate that the human is currently on the corridor.
@@ -42,18 +43,6 @@ public final class Human implements ElevatorListener {
         this.destinationFloor = destinationFloor;
 
         currentState = State.IDLE;
-    }
-
-    public State getCurrentState() {
-        return currentState;
-    }
-
-    public int getStartingFloor() {
-        return startingFloor;
-    }
-
-    public int getDestinationFloor() {
-        return destinationFloor;
     }
 
     @Override

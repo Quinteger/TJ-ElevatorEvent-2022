@@ -1,5 +1,7 @@
 package org.togetherjava.event.elevator.elevators;
 
+import lombok.Getter;
+
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -12,11 +14,11 @@ import java.util.concurrent.atomic.AtomicInteger;
 public final class Elevator implements ElevatorPanel {
     private static final AtomicInteger NEXT_ID = new AtomicInteger(0);
 
-    private final int id;
-    private final int minFloor;
-    private final int maxFloor;
+    @Getter private final int id;
+    @Getter private final int minFloor;
+    @Getter private final int maxFloor;
     public final Queue<Integer> targets = new ArrayDeque<>();
-    private int currentFloor;
+    @Getter private int currentFloor;
 
     /**
      * Creates a new elevator.
@@ -44,26 +46,8 @@ public final class Elevator implements ElevatorPanel {
         this.currentFloor = currentFloor;
     }
 
-    @Override
-    public int getId() {
-        return id;
-    }
-
-    public int getMinFloor() {
-        return minFloor;
-    }
-
-    public int getMaxFloor() {
-        return maxFloor;
-    }
-
     public int getFloorsServed() {
         return maxFloor - minFloor + 1;
-    }
-
-    @Override
-    public int getCurrentFloor() {
-        return currentFloor;
     }
 
     @Override
@@ -117,7 +101,7 @@ public final class Elevator implements ElevatorPanel {
     }
 
     /**
-     * @return whether this elevator can serve specified floors.
+     * @return whether this elevator can serve all the specified floors.
      */
     public boolean canServe(int... floors) {
         for (int floor : floors) {
@@ -129,7 +113,7 @@ public final class Elevator implements ElevatorPanel {
     }
 
     /**
-     * Throw an exception if the specified floor cannot be served by this elevator.
+     * @throws IllegalArgumentException if the specified floor cannot be served by this elevator.
      */
     private void rangeCheck(int floor) {
         if (!canServe(floor)) {
@@ -194,6 +178,7 @@ public final class Elevator implements ElevatorPanel {
                     return count;
                 }
             }
+            // If there are more floors remaining to check, add what's left of currently inspected path
             count += Math.abs(nextTarget - previousTarget);
 
             previousTarget = nextTarget;
