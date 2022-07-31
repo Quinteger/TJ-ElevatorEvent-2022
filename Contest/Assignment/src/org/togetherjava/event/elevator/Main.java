@@ -1,5 +1,6 @@
 package org.togetherjava.event.elevator;
 
+import org.togetherjava.event.elevator.simulation.MoreSimulations;
 import org.togetherjava.event.elevator.simulation.Simulation;
 
 public final class Main {
@@ -21,7 +22,9 @@ public final class Main {
 //         Simulation simulation = Simulation.createSimpleSimulation();
 //         Simulation simulation = Simulation.createRandomSimulation(5, 50, 10);
         // Simulation simulation = Simulation.createRandomSimulation(putDesiredSeedHere, 5, 50, 10);
-        Simulation simulation = Simulation.createRandomSimulation(3, 100, 100_000, 100);
+//        Simulation simulation = Simulation.createRandomSimulation(3, 100, 100_000, 100);
+//        Simulation simulation = MoreSimulations.createSimpleFailingSimulation();
+        Simulation simulation = MoreSimulations.createSimpleSucceedingSimulation();
 
         simulation.printSummary();
 
@@ -32,7 +35,9 @@ public final class Main {
         while (!simulation.isDone()) {
             System.out.println("\tSimulation step " + simulation.getStepCount());
             simulation.step();
-//            simulation.prettyPrint();
+            if (simulation.shouldPrettyPrint()) {
+                simulation.prettyPrint();
+            }
 //            simulation.printCurrentStatistics();
 
             if (simulation.getStepCount() >= 100_000) {

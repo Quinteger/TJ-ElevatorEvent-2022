@@ -158,4 +158,8 @@ public final class Simulation {
         System.out.println(humanStatistics.stream()
                 .collect(Collectors.toMap((HumanStatistics stat) -> stat.getHuman().getCurrentState(), s -> 1, Integer::sum)));
     }
+
+    public boolean shouldPrettyPrint() {
+        return elevators.size() <= 20;
+    }
 }

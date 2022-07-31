@@ -54,23 +54,30 @@ public final class Human implements Passenger {
     }
 
     @Override
-    public void onElevatorSystemReady(FloorPanelSystem floorPanelSystem) {
+    public boolean isBoarded() {
+        return currentEnteredElevator != null;
+    }
+
+    @Override
+    public synchronized void onElevatorSystemReady(FloorPanelSystem floorPanelSystem) {
         // The system is now ready and the human should leave
         // their initial IDLE state, requesting an elevator by clicking on the buttons of
         // the floor panel system. The human will now enter the WAITING_FOR_ELEVATOR state.
-        TravelDirection direction;
-        if (startingFloor < destinationFloor) {
-            direction = TravelDirection.UP;
-        } else if (startingFloor > destinationFloor) {
-            direction = TravelDirection.DOWN;
-        } else {
-            // Do nothing. Why did this human come to the elevator hall? :thinking:
-            System.out.printf("A human has matching source and destination floors, it will be counted as arrived: %d and %d%n", startingFloor, destinationFloor);
-            currentState = State.ARRIVED;
-            return;
+        if (currentState == State.IDLE) {
+            TravelDirection direction;
+            if (currentFloor < destinationFloor) {
+                direction = TravelDirection.UP;
+            } else if (currentFloor > destinationFloor) {
+                direction = TravelDirection.DOWN;
+            } else {
+                // Do nothing. Why did this human come to the elevator hall? :thinking:
+                System.out.printf("A human has matching source and destination floors, it will be counted as arrived: %d and %d%n", startingFloor, destinationFloor);
+                currentState = State.ARRIVED;
+                return;
+            }
+            floorPanelSystem.requestElevator(currentFloor, direction);
+            currentState = State.WAITING_FOR_ELEVATOR;
         }
-        floorPanelSystem.requestElevator(startingFloor, direction);
-        currentState = State.WAITING_FOR_ELEVATOR;
     }
 
     @Override
@@ -110,16 +117,18 @@ public final class Human implements Passenger {
             currentEnteredElevator = elevatorPanel;
             currentState = State.TRAVELING_WITH_ELEVATOR;
         } else if (currentState == State.TRAVELING_WITH_ELEVATOR
-                && elevatorPanel.equals(currentEnteredElevator)
-                && elevatorPanel.getCurrentFloor() == nextDestination) {
-            boolean arrived = nextDestination == destinationFloor;
-            elevatorPanel.removePassenger(this, arrived);
-            currentFloor = elevatorPanel.getCurrentFloor();
-            currentEnteredElevator = null;
-            if (arrived) {
-                currentState = State.ARRIVED;
-            } else {
-                currentState = State.WAITING_FOR_ELEVATOR;
+                && elevatorPanel.equals(currentEnteredElevator)) {
+            int elevatorCurrentFloor = elevatorPanel.getCurrentFloor();
+            currentFloor = elevatorCurrentFloor;
+            if (elevatorCurrentFloor == nextDestination) {
+                boolean arrived = nextDestination == destinationFloor;
+                elevatorPanel.removePassenger(this, arrived);
+                currentEnteredElevator = null;
+                if (arrived) {
+                    currentState = State.ARRIVED;
+                } else {
+                    currentState = State.IDLE;
+                }
             }
         }
     }
@@ -135,6 +144,7 @@ public final class Human implements Passenger {
         return new StringJoiner(", ", Human.class.getSimpleName() + "[", "]")
                 .add("currentState=" + currentState)
                 .add("startingFloor=" + startingFloor)
+                .add("currentFloor=" + currentFloor)
                 .add("destinationFloor=" + destinationFloor)
                 .add("currentEnteredElevatorId=" + (currentEnteredElevator == null ? "null" : currentEnteredElevator.getId()))
                 .toString();

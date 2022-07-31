@@ -46,7 +46,7 @@ public final class ElevatorSystem implements FloorPanelSystem {
      */
     public void ready() {
         elevatorListeners.forEach(listener -> listener.onElevatorSystemReady(this));
-        floors.values().forEach(Floor::fireWaitingPassengerListeners);
+        floors.values().forEach(Floor::fireElevatorArrivalEvents);
     }
 
     void passengerEnteredElevator(Passenger passenger) {
@@ -60,7 +60,7 @@ public final class ElevatorSystem implements FloorPanelSystem {
     }
 
     @Override
-    public void requestElevator(int atFloor, TravelDirection desiredTravelDirection) {
+    public synchronized void requestElevator(int atFloor, TravelDirection desiredTravelDirection) {
         // This represents a human standing in the corridor,
         // requesting that an elevator comes to pick them up for travel into the given direction.
         // The system is supposed to make sure that an elevator will eventually reach this floor to pick up the human.
@@ -74,25 +74,25 @@ public final class ElevatorSystem implements FloorPanelSystem {
         int target = calculateAverageTarget(atFloor, desiredTravelDirection)
                 .orElseThrow(() -> new IllegalArgumentException("Impossible to travel %s from floor %d".formatted(desiredTravelDirection.name(), atFloor)));
 
-//        NavigableMap<Integer, List<Elevator>> map = elevators.stream()
-//                .filter(e -> e.canServe(atFloor, target))
-//                .collect(Collectors.groupingBy(e -> e.turnsToVisit(atFloor, target), TreeMap::new, Collectors.toList()));
-//
-//        System.out.printf("A user wants to travel from floor %d %s and has following options:%n", atFloor, desiredTravelDirection.name());
-//
-//        map.forEach((cost, elevators) -> {
-//            elevators.forEach(elevator -> {
-//                System.out.printf("Elevator %d at floor %d with queue %s has cost %d%n", elevator.getId(), elevator.getCurrentFloor(), elevator.targets, cost);
-//            });
-//        });
-//
-//        Elevator elevator = map.firstEntry().getValue().get(0);
-
-
         Elevator elevator = elevators.stream()
-                .filter(e -> e.canServe(atFloor, target))
-                .min(Comparator.comparingInt(e -> e.turnsToVisit(atFloor, target)))
-                .orElseThrow(() -> new IllegalStateException("No suitable elevator found"));
+                .filter(e -> e.canServe(atFloor, atFloor + (desiredTravelDirection == TravelDirection.UP ? 1 : -1)))
+                .min((e1, e2) -> {
+                    boolean s1 = e1.canServe(target);
+                    boolean s2 = e1.canServe(target);
+                    if (s1 && s2) {
+                        return Integer.compare(e1.turnsToVisit(target), e2.turnsToVisit(target));
+                    } else if (s1) {
+                        return -1;
+                    } else if (s2) {
+                        return 1;
+                    } else {
+                        return Integer.compare(
+                                Math.min(Math.abs(e1.getMaxFloor() - target), Math.abs(e1.getMinFloor() - target)),
+                                Math.min(Math.abs(e2.getMaxFloor() - target), Math.abs(e2.getMinFloor() - target))
+                        );
+                    }
+                })
+                .orElseThrow(() -> new IllegalStateException("No elevators can go %s from floor %d".formatted(desiredTravelDirection.name(), atFloor)));
 
         elevator.requestDestinationFloor(atFloor);
     }
@@ -139,43 +139,28 @@ public final class ElevatorSystem implements FloorPanelSystem {
     }
 
     private void moveElevators() {
-        performTasksInParallel(elevators, MoveElevatorTask::new);
+        performTasksInParallel(elevators, e -> {
+            floors.get(e.getCurrentFloor()).removeElevator(e);
+            e.moveOneFloor();
+            floors.get(e.getCurrentFloor()).addElevator(e);
+        });
     }
 
     private void fireFloorListeners() {
-        performTasksInParallel(floors.values(), FireListenersTask::new);
+        performTasksInParallel(floors.values(), f -> {
+            f.fireElevatorPassengerEvents();
+            f.fireElevatorArrivalEvents();
+            f.fireElevatorRequestEvents(this);
+        });
     }
 
-    private static <V, T extends ForkJoinTask<?>> void performTasksInParallel(Collection<V> targets, Function<V, T> taskCreator) {
-        List<T> tasks = targets.stream().map(taskCreator).toList();
+    private static <V> void performTasksInParallel(Collection<V> targets, Consumer<V> action) {
+        List<? extends ForkJoinTask<?>> tasks = targets.stream().map(target -> new RecursiveAction() {
+            @Override
+            protected void compute() {
+                action.accept(target);
+            }
+        }).toList();
         ForkJoinTask.invokeAll(tasks);
-    }
-
-    private class MoveElevatorTask extends RecursiveAction {
-        private final Elevator elevator;
-
-        MoveElevatorTask(Elevator elevator) {
-            this.elevator = elevator;
-        }
-
-        @Override
-        protected void compute() {
-            floors.get(elevator.getCurrentFloor()).removeElevator(elevator);
-            elevator.moveOneFloor();
-            floors.get(elevator.getCurrentFloor()).addElevator(elevator);
-        }
-    }
-
-    private static class FireListenersTask extends RecursiveAction {
-        private final Floor floor;
-
-        FireListenersTask(Floor floor) {
-            this.floor = floor;
-        }
-
-        @Override
-        protected void compute() {
-            floor.fireAllListeners();
-        }
     }
 }

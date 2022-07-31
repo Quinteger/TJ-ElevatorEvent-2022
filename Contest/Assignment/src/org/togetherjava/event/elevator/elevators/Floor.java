@@ -36,12 +36,7 @@ class Floor {
         elevators.remove(elevator);
     }
 
-    void fireAllListeners() {
-        fireElevatorListeners();
-        fireWaitingPassengerListeners();
-    }
-
-    void fireElevatorListeners() {
+    void fireElevatorPassengerEvents() {
         for (Elevator elevator : elevators) {
             for (ElevatorListener passenger : elevator.getPassengers()) {
                 passenger.onElevatorArrivedAtFloor(elevator);
@@ -49,11 +44,17 @@ class Floor {
         }
     }
 
-    void fireWaitingPassengerListeners() {
+    void fireElevatorArrivalEvents() {
         for (Passenger passenger : passengers) {
             for (Elevator elevator : elevators) {
                 passenger.onElevatorArrivedAtFloor(elevator);
             }
+        }
+    }
+
+    void fireElevatorRequestEvents(FloorPanelSystem floorPanelSystem) {
+        for (Passenger passenger : passengers) {
+            passenger.onElevatorSystemReady(floorPanelSystem);
         }
     }
 }

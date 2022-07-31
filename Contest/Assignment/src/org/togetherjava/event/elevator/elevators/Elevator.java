@@ -20,7 +20,7 @@ public final class Elevator implements ElevatorPanel {
     @Getter private final int id;
     @Getter private final int minFloor;
     @Getter private final int maxFloor;
-    @Getter private final Collection<ElevatorListener> passengers = ConcurrentHashMap.newKeySet();
+    @Getter private final Collection<Passenger> passengers = ConcurrentHashMap.newKeySet();
     private final Deque<Integer> targets = new ArrayDeque<>();
     @Getter private int currentFloor;
     private ElevatorSystem elevatorSystem;
