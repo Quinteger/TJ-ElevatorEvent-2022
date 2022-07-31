@@ -7,6 +7,7 @@ import org.togetherjava.event.elevator.elevators.TravelDirection;
 
 import java.util.OptionalInt;
 import java.util.StringJoiner;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * A single human that starts at a given floor and wants to
@@ -16,9 +17,12 @@ import java.util.StringJoiner;
  * for example requesting an elevator, eventually entering and exiting them.
  */
 public final class Human implements ElevatorListener {
-    @Getter private State currentState;
+    private static final AtomicInteger NEXT_ID = new AtomicInteger(0);
+
+    @Getter private final int id;
     @Getter private final int startingFloor;
     @Getter private final int destinationFloor;
+    @Getter private State currentState;
     /**
      * If the human is currently inside an elevator, this is its unique ID.
      * Otherwise, this is {@code null} to indicate that the human is currently on the corridor.
@@ -39,6 +43,7 @@ public final class Human implements ElevatorListener {
             throw new IllegalArgumentException("Floors must be at least 1");
         }
 
+        this.id = NEXT_ID.getAndIncrement();
         this.startingFloor = startingFloor;
         this.destinationFloor = destinationFloor;
 
@@ -98,6 +103,11 @@ public final class Human implements ElevatorListener {
                 .add("destinationFloor=" + destinationFloor)
                 .add("currentEnteredElevatorId=" + currentEnteredElevatorId)
                 .toString();
+    }
+
+    @Override
+    public int hashCode() {
+        return id;
     }
 
     public enum State {

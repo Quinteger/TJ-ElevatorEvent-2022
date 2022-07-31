@@ -70,25 +70,22 @@ public final class Elevator implements ElevatorPanel {
      * or by modifying the last element if it's possible to do so without changing elevator semantics.
      */
     private void addTargetFloor(int targetFloor) {
-        if (targets.isEmpty()) {
-            targets.add(targetFloor);
-        } else {
+        if (!targets.isEmpty()) {
             int to = targets.removeLast();
             int from = targets.isEmpty() ? currentFloor : targets.getLast();
             if (from < to) {
                 if (targetFloor < to) {
                     targets.add(to);
                 }
-                targets.add(targetFloor);
             } else if (from > to) {
                 if (targetFloor > to) {
                     targets.add(to);
                 }
-                targets.add(targetFloor);
             } else {
                 throw new IllegalArgumentException("Elevator has two of the same floors as consecutive targets, this is a bug");
             }
         }
+        targets.add(targetFloor);
     }
 
     public void moveOneFloor() {
@@ -124,6 +121,11 @@ public final class Elevator implements ElevatorPanel {
                 .add("maxFloor=" + maxFloor)
                 .add("currentFloor=" + currentFloor)
                 .toString();
+    }
+
+    @Override
+    public int hashCode() {
+        return id;
     }
 
     /**
