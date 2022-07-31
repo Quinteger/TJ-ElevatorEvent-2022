@@ -19,9 +19,9 @@ class FireListenersTask extends RecursiveAction {
 //            List<FireSingleListenerTask> tasks = listeners.stream().map(listener -> new FireSingleListenerTask(elevator, listener)).toList();
 //            tasks.forEach(ForkJoinTask::fork);
 //            tasks.forEach(ForkJoinTask::join);
-        long startTime = System.nanoTime();
+//        long startTime = System.nanoTime();
         listeners.forEach(listener -> listener.onElevatorArrivedAtFloor(elevator));
-        long endTime = System.nanoTime();
-        System.out.printf("Single listener took %,d ns%n", endTime - startTime);
+//        long endTime = System.nanoTime();
+//        System.out.printf("Single listener took %,d ns%n", endTime - startTime);
     }
 }

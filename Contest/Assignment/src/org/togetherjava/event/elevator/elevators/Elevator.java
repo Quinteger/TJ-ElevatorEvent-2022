@@ -17,7 +17,7 @@ public final class Elevator implements ElevatorPanel {
     @Getter private final int id;
     @Getter private final int minFloor;
     @Getter private final int maxFloor;
-    public final Queue<Integer> targets = new ArrayDeque<>();
+    public final Deque<Integer> targets = new ArrayDeque<>();
     @Getter private int currentFloor;
 
     /**
@@ -60,8 +60,34 @@ public final class Elevator implements ElevatorPanel {
 
         // Let's check if the work queue already contains the desired floor
         if (!willVisitFloor(destinationFloor)) {
-            targets.add(destinationFloor);
+            addTargetFloor(destinationFloor);
             System.out.printf("Elevator %d on floor %d has added floor %d to the queue, the queue is now %s%n", id, currentFloor, destinationFloor, targets);
+        }
+    }
+
+    /**
+     * Add a floor to the task queue of this elevator. Either as a new element at the end of the queue,
+     * or by modifying the last element if it's possible to do so without changing elevator semantics.
+     */
+    private void addTargetFloor(int targetFloor) {
+        if (targets.isEmpty()) {
+            targets.add(targetFloor);
+        } else {
+            int to = targets.removeLast();
+            int from = targets.isEmpty() ? currentFloor : targets.getLast();
+            if (from < to) {
+                if (targetFloor < to) {
+                    targets.add(to);
+                }
+                targets.add(targetFloor);
+            } else if (from > to) {
+                if (targetFloor > to) {
+                    targets.add(to);
+                }
+                targets.add(targetFloor);
+            } else {
+                throw new IllegalArgumentException("Elevator has two of the same floors as consecutive targets, this is a bug");
+            }
         }
     }
 
