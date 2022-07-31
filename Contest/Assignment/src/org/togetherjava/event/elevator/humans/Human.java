@@ -25,6 +25,7 @@ public final class Human implements Passenger {
     @Getter private State currentState;
     @Getter private int currentFloor;
     private int nextDestination;
+    private int expectedElevatorId = -1;
     /**
      * If the human is currently inside an elevator, this the reference to it.
      * Otherwise, this is {@code null} to indicate that the human is currently on the corridor.
@@ -70,7 +71,7 @@ public final class Human implements Passenger {
                 currentState = State.ARRIVED;
                 return;
             }
-            floorPanelSystem.requestElevator(currentFloor, direction);
+            expectedElevatorId = floorPanelSystem.requestElevator(currentFloor, direction);
             currentState = State.WAITING_FOR_ELEVATOR;
         }
     }
@@ -82,7 +83,7 @@ public final class Human implements Passenger {
         // elevator and request their actual destination floor. The state has to change to TRAVELING_WITH_ELEVATOR.
         // If the human is currently traveling with this elevator and the event represents
         // arrival at the human's destination floor, the human can now exit the elevator.
-        if (currentState == State.WAITING_FOR_ELEVATOR && elevatorPanel.getCurrentFloor() == currentFloor) {
+        if (shouldBoardElevator(elevatorPanel)) {
             if (currentFloor < destinationFloor) {
 
                 int elevatorMaxFloor = elevatorPanel.getMaxFloor();
@@ -111,14 +112,14 @@ public final class Human implements Passenger {
 
             currentEnteredElevator = elevatorPanel;
             currentState = State.TRAVELING_WITH_ELEVATOR;
-        } else if (currentState == State.TRAVELING_WITH_ELEVATOR
-                && elevatorPanel.equals(currentEnteredElevator)) {
-            int elevatorCurrentFloor = elevatorPanel.getCurrentFloor();
-            currentFloor = elevatorCurrentFloor;
-            if (elevatorCurrentFloor == nextDestination) {
+        } else if (isInElevator(elevatorPanel)) {
+            currentFloor = elevatorPanel.getCurrentFloor();
+
+            if (currentFloor == nextDestination) {
                 boolean arrived = nextDestination == destinationFloor;
                 elevatorPanel.removePassenger(this, arrived);
                 currentEnteredElevator = null;
+                expectedElevatorId = -1;
                 if (arrived) {
                     currentState = State.ARRIVED;
                 } else {
@@ -126,6 +127,14 @@ public final class Human implements Passenger {
                 }
             }
         }
+    }
+
+    private boolean shouldBoardElevator(ElevatorPanel elevatorPanel) {
+        return currentState == State.WAITING_FOR_ELEVATOR && elevatorPanel.getId() == expectedElevatorId;
+    }
+
+    private boolean isInElevator(ElevatorPanel elevatorPanel) {
+        return currentState == State.TRAVELING_WITH_ELEVATOR && elevatorPanel.equals(currentEnteredElevator);
     }
 
     public OptionalInt getCurrentEnteredElevatorId() {

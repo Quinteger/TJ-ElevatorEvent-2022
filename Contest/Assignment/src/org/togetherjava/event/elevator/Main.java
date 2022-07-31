@@ -25,10 +25,12 @@ public final class Main {
 //        Simulation simulation = Simulation.createRandomSimulation(3, 100, 100_000, 100);
 //        Simulation simulation = MoreSimulations.createSimpleFailingSimulation();
 //        Simulation simulation = MoreSimulations.createSimpleSucceedingSimulation();
-        Simulation simulation = MoreSimulations.createSimpleThreeStepSimulation();
+//        Simulation simulation = MoreSimulations.createSimpleThreeStepSimulation();
+        Simulation simulation = Simulation.createRandomSimulation(1, 100, 1000, 50);
 
         simulation.printSummary();
 
+        long simulationStart = System.nanoTime();
         System.out.println("Starting simulation...");
         simulation.start();
         simulation.prettyPrint();
@@ -46,7 +48,8 @@ public final class Main {
                         + " by now, but they did not. There is likely a bug in your code.");
             }
         }
-        System.out.println("Simulation is done.");
+        long simulationEnd = System.nanoTime();
+        System.out.printf("Simulation completed in %.3f seconds.%n", (simulationEnd - simulationStart) / 1e9);
 
         simulation.printResult();
     }

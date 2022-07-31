@@ -9,6 +9,7 @@ public interface FloorPanelSystem {
      * @param atFloor the floor to pick up the human at, must be within the range served by the system
      * @param desiredTravelDirection the direction the human wants to travel into,
      *                               can be used for determination of the best elevator
+     * @return the id of the elevator that was recommended by the system
      */
-    void requestElevator(int atFloor, TravelDirection desiredTravelDirection);
+    int requestElevator(int atFloor, TravelDirection desiredTravelDirection);
 }

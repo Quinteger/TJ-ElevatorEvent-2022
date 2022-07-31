@@ -59,7 +59,7 @@ public final class ElevatorSystem implements FloorPanelSystem {
     }
 
     @Override
-    public synchronized void requestElevator(int atFloor, TravelDirection desiredTravelDirection) {
+    public synchronized int requestElevator(int atFloor, TravelDirection desiredTravelDirection) {
         // This represents a human standing in the corridor,
         // requesting that an elevator comes to pick them up for travel into the given direction.
         // The system is supposed to make sure that an elevator will eventually reach this floor to pick up the human.
@@ -94,6 +94,7 @@ public final class ElevatorSystem implements FloorPanelSystem {
                 .orElseThrow(() -> new IllegalStateException("No elevators can go %s from floor %d".formatted(desiredTravelDirection.name(), atFloor)));
 
         elevator.requestDestinationFloor(atFloor);
+        return elevator.getId();
     }
 
     public boolean hasActivePassengers() {
