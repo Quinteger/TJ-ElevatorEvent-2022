@@ -125,57 +125,8 @@ public final class ElevatorSystem implements FloorPanelSystem {
         ForkJoinTask.invokeAll(tasks);
     }
 
-    private static class MoveElevatorTask extends RecursiveAction {
-        private final Elevator elevator;
-
-        private MoveElevatorTask(Elevator elevator) {
-            this.elevator = elevator;
-        }
-
-        @Override
-        protected void compute() {
-            elevator.moveOneFloor();
-        }
-    }
-
     private void fireElevatorListeners() {
         List<FireListenersTask> tasks = elevators.stream().map(elevator -> new FireListenersTask(elevator, elevatorListeners)).toList();
         ForkJoinTask.invokeAll(tasks);
-    }
-
-    private static class FireListenersTask extends RecursiveAction {
-        private final Elevator elevator;
-        private final List<ElevatorListener> listeners;
-
-        private FireListenersTask(Elevator elevator, List<ElevatorListener> listeners) {
-            this.elevator = elevator;
-            this.listeners = listeners;
-        }
-
-        @Override
-        protected void compute() {
-//            List<FireSingleListenerTask> tasks = listeners.stream().map(listener -> new FireSingleListenerTask(elevator, listener)).toList();
-//            tasks.forEach(ForkJoinTask::fork);
-//            tasks.forEach(ForkJoinTask::join);
-            long startTime = System.nanoTime();
-            listeners.forEach(listener -> listener.onElevatorArrivedAtFloor(elevator));
-            long endTime = System.nanoTime();
-            System.out.printf("Single listener took %,d ns%n", endTime - startTime);
-        }
-    }
-
-    private static class FireSingleListenerTask extends RecursiveAction {
-        private final Elevator elevator;
-        private final ElevatorListener listener;
-
-        private FireSingleListenerTask(Elevator elevator, ElevatorListener listener) {
-            this.elevator = elevator;
-            this.listener = listener;
-        }
-
-        @Override
-        protected void compute() {
-            listener.onElevatorArrivedAtFloor(elevator);
-        }
     }
 }
