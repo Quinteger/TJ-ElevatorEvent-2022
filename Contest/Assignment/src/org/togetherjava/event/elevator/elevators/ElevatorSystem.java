@@ -1,10 +1,13 @@
 package org.togetherjava.event.elevator.elevators;
 
 import org.togetherjava.event.elevator.humans.ElevatorListener;
+import org.togetherjava.event.elevator.humans.Passenger;
 
 import java.util.*;
 import java.util.concurrent.ForkJoinTask;
 import java.util.concurrent.RecursiveAction;
+import java.util.function.Consumer;
+import java.util.function.Function;
 
 /**
  * System controlling all elevators of a building.
@@ -14,20 +17,26 @@ import java.util.concurrent.RecursiveAction;
  * the system can be made ready using {@link #ready()}.
  */
 public final class ElevatorSystem implements FloorPanelSystem {
-    private final List<Elevator> elevators = new ArrayList<>();
-    private final List<ElevatorListener> elevatorListeners = new ArrayList<>();
-
-    private int minFloor = Integer.MAX_VALUE;
-    private int maxFloor = Integer.MIN_VALUE;
+    private final Collection<Elevator> elevators = new HashSet<>();
+    private final Collection<ElevatorListener> elevatorListeners = new HashSet<>();
+    private final NavigableMap<Integer, Floor> floors = new TreeMap<>();
 
     public void registerElevator(Elevator elevator) {
         elevators.add(elevator);
-        minFloor = Math.min(minFloor, elevator.getMinFloor());
-        maxFloor = Math.max(maxFloor, elevator.getMaxFloor());
+        elevator.setElevatorSystem(this);
+
+        for (int i = elevator.getMinFloor(); i <= elevator.getMaxFloor(); i++) {
+            floors.computeIfAbsent(i, Floor::new);
+        }
+
+        floors.get(elevator.getCurrentFloor()).addElevator(elevator);
     }
 
     public void registerElevatorListener(ElevatorListener listener) {
         elevatorListeners.add(listener);
+        if (listener instanceof Passenger passenger && passenger.getStartingFloor() != passenger.getDestinationFloor()) {
+            floors.get(passenger.getCurrentFloor()).addPassenger(passenger);
+        }
     }
 
     /**
@@ -36,11 +45,18 @@ public final class ElevatorSystem implements FloorPanelSystem {
      * Additionally, elevator arrival events are fired so that humans can immediately enter them.
      */
     public void ready() {
-        elevatorListeners.forEach(listener -> {
-            listener.onElevatorSystemReady(this);
-            elevators.forEach(listener::onElevatorArrivedAtFloor);
-        });
+        elevatorListeners.forEach(listener -> listener.onElevatorSystemReady(this));
+        floors.values().forEach(Floor::fireWaitingPassengerListeners);
+    }
 
+    void passengerEnteredElevator(Passenger passenger) {
+        floors.get(passenger.getCurrentFloor()).removePassenger(passenger);
+    }
+
+    void passengerLeftElevator(Passenger passenger, boolean arrived) {
+        if (!arrived) {
+            floors.get(passenger.getCurrentFloor()).addPassenger(passenger);
+        }
     }
 
     @Override
@@ -52,7 +68,7 @@ public final class ElevatorSystem implements FloorPanelSystem {
         // Ideally this has to select the best elevator among all which can reduce the time
         // for the human spending waiting (either in corridor or in the elevator itself).
         if (elevators.isEmpty()) {
-            throw new IllegalStateException("There are no elevators registered in the system");
+            throw new IllegalStateException("An elevator was requested, but there are none registered in the system");
         }
 
         int target = calculateAverageTarget(atFloor, desiredTravelDirection)
@@ -90,7 +106,7 @@ public final class ElevatorSystem implements FloorPanelSystem {
 
         stepStart = System.nanoTime();
 //        elevators.forEach(elevator -> elevatorListeners.forEach(listener -> listener.onElevatorArrivedAtFloor(elevator)));
-        fireElevatorListeners();
+        fireFloorListeners();
         stepEnd = System.nanoTime();
         System.out.printf("Listener firing took %,d ns%n", stepEnd - stepStart);
     }
@@ -102,6 +118,7 @@ public final class ElevatorSystem implements FloorPanelSystem {
      */
     private OptionalInt calculateAverageTarget(int floorFrom, TravelDirection desiredTravelDirection) {
         if (desiredTravelDirection == TravelDirection.UP) {
+            int maxFloor = floors.lastEntry().getKey();
             if (floorFrom >= maxFloor) {
                 return OptionalInt.empty();
             } else {
@@ -110,6 +127,7 @@ public final class ElevatorSystem implements FloorPanelSystem {
                 return OptionalInt.of(floorFrom + delta);
             }
         } else {
+            int minFloor = floors.firstEntry().getKey();
             if (floorFrom <= minFloor) {
                 return OptionalInt.empty();
             } else {
@@ -121,12 +139,43 @@ public final class ElevatorSystem implements FloorPanelSystem {
     }
 
     private void moveElevators() {
-        List<MoveElevatorTask> tasks = elevators.stream().map(MoveElevatorTask::new).toList();
+        performTasksInParallel(elevators, MoveElevatorTask::new);
+    }
+
+    private void fireFloorListeners() {
+        performTasksInParallel(floors.values(), FireListenersTask::new);
+    }
+
+    private static <V, T extends ForkJoinTask<?>> void performTasksInParallel(Collection<V> targets, Function<V, T> taskCreator) {
+        List<T> tasks = targets.stream().map(taskCreator).toList();
         ForkJoinTask.invokeAll(tasks);
     }
 
-    private void fireElevatorListeners() {
-        List<FireListenersTask> tasks = elevators.stream().map(elevator -> new FireListenersTask(elevator, elevatorListeners)).toList();
-        ForkJoinTask.invokeAll(tasks);
+    private class MoveElevatorTask extends RecursiveAction {
+        private final Elevator elevator;
+
+        MoveElevatorTask(Elevator elevator) {
+            this.elevator = elevator;
+        }
+
+        @Override
+        protected void compute() {
+            floors.get(elevator.getCurrentFloor()).removeElevator(elevator);
+            elevator.moveOneFloor();
+            floors.get(elevator.getCurrentFloor()).addElevator(elevator);
+        }
+    }
+
+    private static class FireListenersTask extends RecursiveAction {
+        private final Floor floor;
+
+        FireListenersTask(Floor floor) {
+            this.floor = floor;
+        }
+
+        @Override
+        protected void compute() {
+            floor.fireAllListeners();
+        }
     }
 }

@@ -21,7 +21,7 @@ public final class Main {
 //         Simulation simulation = Simulation.createSimpleSimulation();
 //         Simulation simulation = Simulation.createRandomSimulation(5, 50, 10);
         // Simulation simulation = Simulation.createRandomSimulation(putDesiredSeedHere, 5, 50, 10);
-        Simulation simulation = Simulation.createRandomSimulation(3, 100, 100_000, 50);
+        Simulation simulation = Simulation.createRandomSimulation(3, 100, 100_000, 100);
 
         simulation.printSummary();
 
@@ -33,7 +33,7 @@ public final class Main {
             System.out.println("\tSimulation step " + simulation.getStepCount());
             simulation.step();
 //            simulation.prettyPrint();
-            simulation.printCurrentStatistics();
+//            simulation.printCurrentStatistics();
 
             if (simulation.getStepCount() >= 100_000) {
                 throw new IllegalStateException("Simulation aborted. All humans should have arrived"

@@ -1,8 +1,11 @@
 package org.togetherjava.event.elevator.elevators;
 
 import lombok.Getter;
+import org.togetherjava.event.elevator.humans.ElevatorListener;
+import org.togetherjava.event.elevator.humans.Passenger;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -17,8 +20,10 @@ public final class Elevator implements ElevatorPanel {
     @Getter private final int id;
     @Getter private final int minFloor;
     @Getter private final int maxFloor;
-    public final Deque<Integer> targets = new ArrayDeque<>();
+    @Getter private final Collection<ElevatorListener> passengers = ConcurrentHashMap.newKeySet();
+    private final Deque<Integer> targets = new ArrayDeque<>();
     @Getter private int currentFloor;
+    private ElevatorSystem elevatorSystem;
 
     /**
      * Creates a new elevator.
@@ -48,6 +53,28 @@ public final class Elevator implements ElevatorPanel {
 
     public int getFloorsServed() {
         return maxFloor - minFloor + 1;
+    }
+
+    void setElevatorSystem(ElevatorSystem elevatorSystem) {
+        if (elevatorSystem == null) {
+            throw new IllegalArgumentException("Elevator system must not be null");
+        }
+        this.elevatorSystem = elevatorSystem;
+    }
+
+    @Override
+    public void boardPassenger(Passenger passenger) {
+        passengers.add(passenger);
+        elevatorSystem.passengerEnteredElevator(passenger);
+    }
+
+    @Override
+    public void removePassenger(Passenger passenger, boolean arrived) {
+        if (!passengers.contains(passenger)) {
+            throw new IllegalArgumentException("Attempt to remove a passenger which is not in the elevator");
+        }
+        passengers.remove(passenger);
+        elevatorSystem.passengerLeftElevator(passenger, arrived);
     }
 
     @Override

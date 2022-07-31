@@ -16,18 +16,20 @@ import java.util.concurrent.atomic.AtomicInteger;
  * The class mainly acts upon given elevator events it listens to,
  * for example requesting an elevator, eventually entering and exiting them.
  */
-public final class Human implements ElevatorListener {
+public final class Human implements Passenger {
     private static final AtomicInteger NEXT_ID = new AtomicInteger(0);
 
     @Getter private final int id;
     @Getter private final int startingFloor;
     @Getter private final int destinationFloor;
     @Getter private State currentState;
+    @Getter private int currentFloor;
+    private int nextDestination;
     /**
-     * If the human is currently inside an elevator, this is its unique ID.
+     * If the human is currently inside an elevator, this the reference to it.
      * Otherwise, this is {@code null} to indicate that the human is currently on the corridor.
      */
-    private Integer currentEnteredElevatorId;
+    private ElevatorPanel currentEnteredElevator;
 
     /**
      * Creates a new human.
@@ -45,6 +47,7 @@ public final class Human implements ElevatorListener {
 
         this.id = NEXT_ID.getAndIncrement();
         this.startingFloor = startingFloor;
+        this.currentFloor = startingFloor;
         this.destinationFloor = destinationFloor;
 
         currentState = State.IDLE;
@@ -77,22 +80,54 @@ public final class Human implements ElevatorListener {
         // elevator and request their actual destination floor. The state has to change to TRAVELING_WITH_ELEVATOR.
         // If the human is currently traveling with this elevator and the event represents
         // arrival at the human's destination floor, the human can now exit the elevator.
-        if (currentState == State.WAITING_FOR_ELEVATOR && elevatorPanel.getCurrentFloor() == startingFloor) {
-            currentEnteredElevatorId = elevatorPanel.getId();
-            elevatorPanel.requestDestinationFloor(destinationFloor);
+        if (currentState == State.WAITING_FOR_ELEVATOR && elevatorPanel.getCurrentFloor() == currentFloor) {
+            if (currentFloor < destinationFloor) {
+
+                int elevatorMaxFloor = elevatorPanel.getMaxFloor();
+                if (elevatorMaxFloor <= currentFloor) {
+                    // This human wants to go up, but the elevator cannot go up, skip
+                    return;
+                }
+
+                elevatorPanel.boardPassenger(this);
+                nextDestination = Math.min(elevatorMaxFloor, destinationFloor);
+                elevatorPanel.requestDestinationFloor(nextDestination);
+            } else if (currentFloor > destinationFloor) {
+
+                int elevatorMinFloor = elevatorPanel.getMinFloor();
+                if (elevatorMinFloor >= currentFloor) {
+                    // This human wants to go down, but the elevator cannot go down, skip
+                    return;
+                }
+
+                elevatorPanel.boardPassenger(this);
+                nextDestination = Math.max(elevatorMinFloor, destinationFloor);
+                elevatorPanel.requestDestinationFloor(nextDestination);
+            } else {
+                throw new RuntimeException("A human's current floor matches destination floor, but they are waiting for an elevator, this is a bug");
+            }
+
+            currentEnteredElevator = elevatorPanel;
             currentState = State.TRAVELING_WITH_ELEVATOR;
         } else if (currentState == State.TRAVELING_WITH_ELEVATOR
-                && elevatorPanel.getId() == currentEnteredElevatorId
-                && elevatorPanel.getCurrentFloor() == destinationFloor) {
-            currentEnteredElevatorId = null;
-            currentState = State.ARRIVED;
+                && elevatorPanel.equals(currentEnteredElevator)
+                && elevatorPanel.getCurrentFloor() == nextDestination) {
+            boolean arrived = nextDestination == destinationFloor;
+            elevatorPanel.removePassenger(this, arrived);
+            currentFloor = elevatorPanel.getCurrentFloor();
+            currentEnteredElevator = null;
+            if (arrived) {
+                currentState = State.ARRIVED;
+            } else {
+                currentState = State.WAITING_FOR_ELEVATOR;
+            }
         }
     }
 
     public OptionalInt getCurrentEnteredElevatorId() {
-        return currentEnteredElevatorId == null
+        return currentEnteredElevator == null
                 ? OptionalInt.empty()
-                : OptionalInt.of(currentEnteredElevatorId);
+                : OptionalInt.of(currentEnteredElevator.getId());
     }
 
     @Override
@@ -101,7 +136,7 @@ public final class Human implements ElevatorListener {
                 .add("currentState=" + currentState)
                 .add("startingFloor=" + startingFloor)
                 .add("destinationFloor=" + destinationFloor)
-                .add("currentEnteredElevatorId=" + currentEnteredElevatorId)
+                .add("currentEnteredElevatorId=" + (currentEnteredElevator == null ? "null" : currentEnteredElevator.getId()))
                 .toString();
     }
 
