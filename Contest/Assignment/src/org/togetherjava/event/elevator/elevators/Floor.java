@@ -1,10 +1,13 @@
 package org.togetherjava.event.elevator.elevators;
 
 import org.togetherjava.event.elevator.humans.ElevatorListener;
+import org.togetherjava.event.elevator.humans.Human;
 import org.togetherjava.event.elevator.humans.Passenger;
 
 import java.util.Collection;
+import java.util.StringJoiner;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 class Floor {
     private final int number;
@@ -13,6 +16,13 @@ class Floor {
 
     Floor(int number) {
         this.number = number;
+    }
+
+    @Override
+    public String toString() {
+        return new StringJoiner(", ", Floor.class.getSimpleName() + "[", "]")
+                .add("number=" + number)
+                .toString();
     }
 
     @Override
@@ -36,7 +46,11 @@ class Floor {
         elevators.remove(elevator);
     }
 
-    void fireElevatorPassengerEvents() {
+    synchronized int getActivePassengers() {
+        return passengers.size() + elevators.stream().map(e -> e.getPassengers().size()).reduce(0, Integer::sum);
+    }
+
+    synchronized void fireElevatorPassengerEvents() {
         for (Elevator elevator : elevators) {
             for (ElevatorListener passenger : elevator.getPassengers()) {
                 passenger.onElevatorArrivedAtFloor(elevator);
@@ -44,7 +58,7 @@ class Floor {
         }
     }
 
-    void fireElevatorArrivalEvents() {
+    synchronized void fireElevatorArrivalEvents() {
         for (Passenger passenger : passengers) {
             for (Elevator elevator : elevators) {
                 passenger.onElevatorArrivedAtFloor(elevator);
@@ -52,7 +66,7 @@ class Floor {
         }
     }
 
-    void fireElevatorRequestEvents(FloorPanelSystem floorPanelSystem) {
+    synchronized void fireElevatorRequestEvents(FloorPanelSystem floorPanelSystem) {
         for (Passenger passenger : passengers) {
             passenger.onElevatorSystemReady(floorPanelSystem);
         }

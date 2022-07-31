@@ -7,7 +7,6 @@ import java.util.*;
 import java.util.concurrent.ForkJoinTask;
 import java.util.concurrent.RecursiveAction;
 import java.util.function.Consumer;
-import java.util.function.Function;
 
 /**
  * System controlling all elevators of a building.
@@ -95,6 +94,12 @@ public final class ElevatorSystem implements FloorPanelSystem {
                 .orElseThrow(() -> new IllegalStateException("No elevators can go %s from floor %d".formatted(desiredTravelDirection.name(), atFloor)));
 
         elevator.requestDestinationFloor(atFloor);
+    }
+
+    public boolean hasActivePassengers() {
+        return floors.values().stream()
+                .map(Floor::getActivePassengers)
+                .reduce(0, Integer::sum) > 0;
     }
 
     public void moveOneFloor() {

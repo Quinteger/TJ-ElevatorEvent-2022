@@ -103,9 +103,10 @@ public final class Simulation {
     }
 
     public boolean isDone() {
-        return humans.stream()
-                .map(Human::getCurrentState)
-                .allMatch(Human.State.ARRIVED::equals);
+//        return humans.stream()
+//                .map(Human::getCurrentState)
+//                .allMatch(Human.State.ARRIVED::equals);
+        return !elevatorSystem.hasActivePassengers();
     }
 
     public long getStepCount() {

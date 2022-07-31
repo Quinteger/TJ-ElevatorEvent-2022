@@ -54,11 +54,6 @@ public final class Human implements Passenger {
     }
 
     @Override
-    public boolean isBoarded() {
-        return currentEnteredElevator != null;
-    }
-
-    @Override
     public synchronized void onElevatorSystemReady(FloorPanelSystem floorPanelSystem) {
         // The system is now ready and the human should leave
         // their initial IDLE state, requesting an elevator by clicking on the buttons of

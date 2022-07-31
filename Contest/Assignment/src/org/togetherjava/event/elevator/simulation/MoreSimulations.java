@@ -27,4 +27,14 @@ public class MoreSimulations {
                 List.of(
                         new Human(1, 8)));
     }
+
+    public static Simulation createSimpleThreeStepSimulation() {
+        return new Simulation(
+                List.of(
+                        new Elevator(7, 4, 10),
+                        new Elevator(4, 5, 5),
+                        new Elevator(1, 5, 3)),
+                List.of(
+                        new Human(1, 10)));
+    }
 }

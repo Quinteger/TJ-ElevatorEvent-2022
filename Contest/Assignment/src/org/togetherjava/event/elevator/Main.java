@@ -24,7 +24,8 @@ public final class Main {
         // Simulation simulation = Simulation.createRandomSimulation(putDesiredSeedHere, 5, 50, 10);
 //        Simulation simulation = Simulation.createRandomSimulation(3, 100, 100_000, 100);
 //        Simulation simulation = MoreSimulations.createSimpleFailingSimulation();
-        Simulation simulation = MoreSimulations.createSimpleSucceedingSimulation();
+//        Simulation simulation = MoreSimulations.createSimpleSucceedingSimulation();
+        Simulation simulation = MoreSimulations.createSimpleThreeStepSimulation();
 
         simulation.printSummary();
 
