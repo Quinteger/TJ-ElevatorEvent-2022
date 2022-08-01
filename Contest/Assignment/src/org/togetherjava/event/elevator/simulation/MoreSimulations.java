@@ -48,4 +48,21 @@ public class MoreSimulations {
                 List.of(
                         new Human(1, 7)));
     }
+
+    public static Simulation createSimpleAdvancedSimulation() {
+        return new AdvancedSimulation(
+                List.of(
+                        new CommonElevator(1, 10, 10),
+                        new CommonElevator(1, 10, 8)),
+                List.of(
+                        new Human(1, 9)));
+    }
+
+    public static Simulation createMegaSimulation() {
+        return Simulation.createRandomSimulation(3, 100, 100_000, 100);
+    }
+
+    public static AdvancedSimulation createMegaAdvancedSimulation() {
+        return AdvancedSimulation.createRandomSimulation(3, 100, 100_000, 100);
+    }
 }

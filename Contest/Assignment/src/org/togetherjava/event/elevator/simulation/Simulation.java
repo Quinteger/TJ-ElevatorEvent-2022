@@ -10,17 +10,18 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 import java.util.stream.LongStream;
 import java.util.stream.Stream;
 
-public final class Simulation {
-    private final List<Human> humans;
-    private final List<Elevator> elevators;
-    private final ElevatorSystem elevatorSystem;
+public class Simulation {
+    protected final List<Human> humans;
+    protected final List<Elevator> elevators;
+    protected final ElevatorSystem elevatorSystem;
     private final View view;
-    private long stepCount;
-    private final List<HumanStatistics> humanStatistics;
+    protected long stepCount;
+    protected final List<HumanStatistics> humanStatistics;
 
     public static Simulation createSingleElevatorSingleHumanSimulation() {
         return new Simulation(List.of(new CommonElevator(1, 10, 5)),
@@ -48,6 +49,10 @@ public final class Simulation {
     }
 
     public static Simulation createRandomSimulation(long seed, int amountOfElevators, int amountOfHumans, int floorsServed) {
+        return createRandomSimulation(seed, amountOfElevators, amountOfHumans, floorsServed, Simulation::new);
+    }
+
+    public static <T extends Simulation> T createRandomSimulation(long seed, int amountOfElevators, int amountOfHumans, int floorsServed, BiFunction<List<? extends Elevator>, List<Human>, T> factory) {
         System.out.println("Seed for random simulation is: " + seed);
         Random random = new Random(seed);
 
@@ -64,7 +69,7 @@ public final class Simulation {
             return new Human(startingFloor, destinationFloor);
         }).limit(amountOfHumans).toList();
 
-        return new Simulation(elevators, humans);
+        return factory.apply(elevators, humans);
     }
 
     public Simulation(List<? extends Elevator> elevators, List<Human> humans) {
@@ -75,7 +80,7 @@ public final class Simulation {
         this.elevators.forEach(elevatorSystem::registerElevator);
         this.humans.forEach(elevatorSystem::registerElevatorListener);
 
-        humanStatistics = this.humans.stream().map(HumanStatistics::new).toList();
+        humanStatistics = this.humans.stream().map(HumanStatistics::new).collect(Collectors.toCollection(() -> new ArrayList<>(humans.size())));
         view = new View(this);
     }
 

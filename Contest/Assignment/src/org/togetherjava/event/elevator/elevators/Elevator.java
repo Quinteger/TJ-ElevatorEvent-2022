@@ -10,8 +10,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * Common superclass for all elevators.
  * <p>
- * An elevator may take floor requests from either humans or the elevator system itself.
- * The elevator will eventually move towards the requested floor and transport humans to their destinations.
+ * An elevator may be able to take floor requests from either humans or the elevator system itself. In that case,
+ * the elevator will eventually move towards the requested floor and transport humans to their destinations.
  */
 public abstract class Elevator implements ElevatorPanel {
     private static final AtomicInteger NEXT_ID = new AtomicInteger(0);

@@ -1,6 +1,5 @@
 package org.togetherjava.event.elevator.elevators;
 
-import org.togetherjava.event.elevator.humans.ElevatorListener;
 import org.togetherjava.event.elevator.humans.Passenger;
 
 /**

@@ -113,6 +113,18 @@ public final class ElevatorSystem implements FloorPanelSystem {
         return elevator.getId();
     }
 
+    public int getFloorAmount() {
+        return floors.size();
+    }
+
+    public int getMinFloor() {
+        return floors.firstEntry().getKey();
+    }
+
+    public int getMaxFloor() {
+        return floors.lastEntry().getKey();
+    }
+
     public boolean hasActivePassengers() {
         return floors.values().stream()
                 .map(Floor::getActivePassengers)
@@ -167,6 +179,13 @@ public final class ElevatorSystem implements FloorPanelSystem {
         });
     }
 
+    /**
+     * Elevator passengers are notified first, giving them a chance to exit and potentially remove themselves
+     * from tracking if they have reached their destination. In the majority of cases, this will be a performance
+     * improvement compared to firing waiting passenger events first.
+     * Lastly, once everyone who wanted to board did so, notify any remaining idle passengers that they can request
+     * an elevator. This helps to introduce new passengers to the system.
+     */
     private void fireFloorListeners() {
         performTasksInParallel(floors.values(), f -> {
             f.fireElevatorPassengerEvents();
