@@ -1,7 +1,6 @@
 package org.togetherjava.event.elevator.elevators;
 
 import lombok.Getter;
-import org.togetherjava.event.elevator.humans.ElevatorListener;
 import org.togetherjava.event.elevator.humans.Passenger;
 
 import java.util.*;
@@ -9,21 +8,24 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * A single elevator that can serve a given amount of floors.
+ * Common superclass for all elevators.
  * <p>
- * An elevator can take floor requests from either humans or the elevator system itself.
+ * An elevator may take floor requests from either humans or the elevator system itself.
  * The elevator will eventually move towards the requested floor and transport humans to their destinations.
  */
-public final class Elevator implements ElevatorPanel {
+public abstract class Elevator implements ElevatorPanel {
     private static final AtomicInteger NEXT_ID = new AtomicInteger(0);
 
-    @Getter private final int id;
-    @Getter private final int minFloor;
-    @Getter private final int maxFloor;
-    @Getter private final Collection<Passenger> passengers = ConcurrentHashMap.newKeySet();
-    private final Deque<Integer> targets = new ArrayDeque<>();
-    @Getter private int currentFloor;
-    private ElevatorSystem elevatorSystem;
+    @Getter protected final int id;
+    @Getter protected final int minFloor;
+    @Getter protected final int maxFloor;
+    @Getter protected final Collection<Passenger> passengers = ConcurrentHashMap.newKeySet();
+    protected final Deque<Integer> targets = new ArrayDeque<>();
+    @Getter protected int currentFloor;
+    /**
+     * An elevator should be aware of the system it belongs to.
+     */
+    protected ElevatorSystem elevatorSystem;
 
     /**
      * Creates a new elevator.
@@ -77,54 +79,39 @@ public final class Elevator implements ElevatorPanel {
         elevatorSystem.passengerLeftElevator(passenger, arrived);
     }
 
-    @Override
-    public synchronized void requestDestinationFloor(int destinationFloor) {
-        // This represents a human or the elevator system
-        // itself requesting this elevator to eventually move to the given floor.
-        // The elevator is supposed to memorize the destination in a way that
-        // it can ensure to eventually reach it.
-        rangeCheck(destinationFloor);
-
-        // Let's check if the work queue already contains the desired floor
-        if (!willVisitFloor(destinationFloor)) {
-            addTargetFloor(destinationFloor);
-            System.out.printf("Elevator %d on floor %d has added floor %d to the queue, the queue is now %s%n", id, currentFloor, destinationFloor, targets);
-        }
-    }
+    /**
+     * Whether this elevator accepts requests to move to a floor.
+     * For example, a paternoster elevator does not, because his movement patters is predetermined forever.
+     * @see #requestDestinationFloor(int)
+     */
+    public abstract boolean canRequestDestinationFloor();
 
     /**
-     * Add a floor to the task queue of this elevator. Either as a new element at the end of the queue,
-     * or by modifying the last element if it's possible to do so without changing elevator semantics.
+     * This represents a human or the elevator system
+     * itself requesting this elevator to eventually move to the given floor.
+     * The elevator is supposed to memorize the destination in a way that
+     * it can ensure to eventually reach it.
+     *
+     * @throws UnsupportedOperationException if the operation is not supported by this elevator
+     * @see #canRequestDestinationFloor()
      */
-    private void addTargetFloor(int targetFloor) {
-        if (!targets.isEmpty()) {
-            int to = targets.removeLast();
-            int from = targets.isEmpty() ? currentFloor : targets.getLast();
-            if (from < to) {
-                if (targetFloor < to) {
-                    targets.add(to);
-                }
-            } else if (from > to) {
-                if (targetFloor > to) {
-                    targets.add(to);
-                }
-            } else {
-                throw new IllegalArgumentException("Elevator has two of the same floors as consecutive targets, this is a bug");
-            }
-        }
-        targets.add(targetFloor);
-    }
+    @Override
+    public abstract void requestDestinationFloor(int destinationFloor);
 
+    /**
+     * Essentially there are three possibilities:
+     * <ul>
+     *  <li>move up one floor</li>
+     *  <li>move down one floor</li>
+     *  <li>stand still</li>
+     *  </ul>
+     *  The elevator is supposed to move in a way that it will eventually reach
+     *  the floors requested by Humans via {@link #requestDestinationFloor(int)}, ideally "fast" but also "fair",
+     *  meaning that the average time waiting (either in corridor or inside the elevator)
+     *  is minimized across all humans.
+     *  It is essential that this method updates the currentFloor field accordingly.
+     */
     public void moveOneFloor() {
-        // Implement. Essentially there are three possibilities:
-        // - move up one floor
-        // - move down one floor
-        // - stand still
-        // The elevator is supposed to move in a way that it will eventually reach
-        // the floors requested by Humans via requestDestinationFloor(), ideally "fast" but also "fair",
-        // meaning that the average time waiting (either in corridor or inside the elevator)
-        // is minimized across all humans.
-        // It is essential that this method updates the currentFloor field accordingly.
         if (!targets.isEmpty()) {
             int target = targets.element();
             if (currentFloor < target) {
@@ -136,14 +123,16 @@ public final class Elevator implements ElevatorPanel {
             }
             if (currentFloor == target) {
                 // We arrived at the next target
-                targets.remove();
+                modifyTargetsOnArrival();
             }
         }
     }
 
+    protected abstract void modifyTargetsOnArrival();
+
     @Override
     public synchronized String toString() {
-        return new StringJoiner(", ", Elevator.class.getSimpleName() + "[", "]").add("id=" + id)
+        return new StringJoiner(", ", getClass().getSimpleName() + "[", "]").add("id=" + id)
                 .add("minFloor=" + minFloor)
                 .add("maxFloor=" + maxFloor)
                 .add("currentFloor=" + currentFloor)
@@ -168,45 +157,16 @@ public final class Elevator implements ElevatorPanel {
     }
 
     /**
-     * @throws IllegalArgumentException if the specified floor cannot be served by this elevator.
-     */
-    private void rangeCheck(int floor) {
-        if (!canServe(floor)) {
-            throw new IllegalArgumentException("Elevator cannot serve floor %d, only %d to %d are available".formatted(floor, minFloor, maxFloor));
-        }
-    }
-
-    /**
      * @return whether this elevator is currently on the specified floor
      * or will at some point visit that floor before all its tasks are done.
      */
-    public boolean willVisitFloor(int floor) {
-        if (!canServe(floor)) {
-            return false;
-        }
-
-        if (floor == currentFloor) {
-            return true;
-        }
-
-        int previousTarget = currentFloor;
-        for (int nextTarget : targets) {
-            // If the target floor is already on the path between floors, return true
-            int min = Math.min(previousTarget, nextTarget);
-            int max = Math.max(previousTarget, nextTarget);
-            if (min <= floor && floor <= max) {
-                return true;
-            }
-            previousTarget = nextTarget;
-        }
-        return false;
-    }
+    public abstract boolean willVisitFloor(int floor);
 
     /**
      * @return the minimum amount of turns it would take for this elevator to visit a specified sequence of floors
-     * (either indirectly by passing by or by creating new tasks), or -1 if it's impossible.
-     * @implNote a choice was made to use {@code int} over {@link java.util.OptionalInt OptionalInt}
-     * since the amount of turns cannot be negative.
+     * (either indirectly by passing by or by creating new tasks), or -1 if it's impossible or of the input array is empty
+     * @implNote a choice was made to use {@code int} over {@link OptionalInt OptionalInt}
+     * since the amount of turns cannot be negative
      */
     public int turnsToVisit(int... floors) {
         if (floors.length == 0) {
@@ -217,7 +177,12 @@ public final class Elevator implements ElevatorPanel {
         int previousTarget = currentFloor;
         Iterator<Integer> targetItr = targets.iterator();
         Iterator<Integer> floorItr = Arrays.stream(floors).iterator();
+
         int nextFloor = floorItr.next();
+        if (!canServe(nextFloor)) {
+            return -1;
+        }
+
         while (targetItr.hasNext()) {
             int nextTarget = targetItr.next();
 
@@ -229,6 +194,9 @@ public final class Elevator implements ElevatorPanel {
                 previousTarget = nextFloor;
                 if (floorItr.hasNext()) {
                     nextFloor = floorItr.next();
+                    if (!canServe(nextFloor)) {
+                        return -1;
+                    }
                 } else {
                     return count;
                 }
@@ -246,6 +214,10 @@ public final class Elevator implements ElevatorPanel {
         // simulate adding them to the queue
         while (floorItr.hasNext()) {
             nextFloor = floorItr.next();
+            if (!canServe(nextFloor)) {
+                return -1;
+            }
+
             count += Math.abs(nextFloor - previousTarget);
             previousTarget = nextFloor;
         }

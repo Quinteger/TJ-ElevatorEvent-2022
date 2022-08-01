@@ -26,7 +26,8 @@ public final class Main {
 //        Simulation simulation = MoreSimulations.createSimpleFailingSimulation();
 //        Simulation simulation = MoreSimulations.createSimpleSucceedingSimulation();
 //        Simulation simulation = MoreSimulations.createSimpleThreeStepSimulation();
-        Simulation simulation = Simulation.createRandomSimulation(1, 100, 1000, 50);
+//        Simulation simulation = Simulation.createRandomSimulation(1, 100, 1000, 50);
+        Simulation simulation = MoreSimulations.createSimplePaternosterSimulation();
 
         simulation.printSummary();
 

@@ -1,6 +1,7 @@
 package org.togetherjava.event.elevator.simulation;
 
-import org.togetherjava.event.elevator.elevators.Elevator;
+import org.togetherjava.event.elevator.elevators.CommonElevator;
+import org.togetherjava.event.elevator.elevators.PaternosterElevator;
 import org.togetherjava.event.elevator.humans.Human;
 
 import java.util.List;
@@ -13,8 +14,8 @@ public class MoreSimulations {
     public static Simulation createSimpleFailingSimulation() {
         return new Simulation(
                 List.of(
-                        new Elevator(6, 5, 10),
-                        new Elevator(1, 5, 5)),
+                        new CommonElevator(6, 5, 10),
+                        new CommonElevator(1, 5, 5)),
                 List.of(
                         new Human(1, 7)));
     }
@@ -22,8 +23,8 @@ public class MoreSimulations {
     public static Simulation createSimpleSucceedingSimulation() {
         return new Simulation(
                 List.of(
-                        new Elevator(6, 5, 10),
-                        new Elevator(1, 6, 5)),
+                        new CommonElevator(6, 5, 10),
+                        new CommonElevator(1, 6, 5)),
                 List.of(
                         new Human(1, 8)));
     }
@@ -31,10 +32,20 @@ public class MoreSimulations {
     public static Simulation createSimpleThreeStepSimulation() {
         return new Simulation(
                 List.of(
-                        new Elevator(7, 4, 10),
-                        new Elevator(4, 5, 5),
-                        new Elevator(1, 5, 3)),
+                        new CommonElevator(7, 4, 10),
+                        new CommonElevator(4, 5, 5),
+                        new CommonElevator(1, 5, 3)),
                 List.of(
                         new Human(1, 10)));
+    }
+
+    public static Simulation createSimplePaternosterSimulation() {
+        return new Simulation(
+                List.of(
+                        new CommonElevator(6, 5, 10),
+                        new PaternosterElevator(1, 8, 5),
+                        new PaternosterElevator(8, 3, 10)),
+                List.of(
+                        new Human(1, 7)));
     }
 }

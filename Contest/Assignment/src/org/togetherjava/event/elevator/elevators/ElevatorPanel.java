@@ -23,9 +23,18 @@ public interface ElevatorPanel {
     int getCurrentFloor();
 
     /**
+     * Whether this elevator accepts requests to move to a floor.
+     * For example, a paternoster elevator does not, because his movement patters is predetermined forever.
+     * @see #requestDestinationFloor(int)
+     */
+    boolean canRequestDestinationFloor();
+
+    /**
      * Requesting the elevator to eventually move to the given destination floor, for humans to exit.
      *
      * @param destinationFloor the desired destination, must be within the range served by this elevator
+     * @throws UnsupportedOperationException if the operation is not supported by this elevator
+     * @see #canRequestDestinationFloor()
      */
     void requestDestinationFloor(int destinationFloor);
 

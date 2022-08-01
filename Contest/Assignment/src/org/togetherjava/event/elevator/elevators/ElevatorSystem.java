@@ -44,8 +44,8 @@ public final class ElevatorSystem implements FloorPanelSystem {
      * Additionally, elevator arrival events are fired so that humans can immediately enter them.
      */
     public void ready() {
-        elevatorListeners.forEach(listener -> listener.onElevatorSystemReady(this));
-        floors.values().forEach(Floor::fireElevatorArrivalEvents);
+        performTasksInParallel(elevatorListeners, el -> el.onElevatorSystemReady(this));
+        performTasksInParallel(floors.values(), Floor::fireElevatorArrivalEvents);
     }
 
     void passengerEnteredElevator(Passenger passenger) {
@@ -58,14 +58,21 @@ public final class ElevatorSystem implements FloorPanelSystem {
         }
     }
 
+    /**
+     * This represents a human standing in the corridor,
+     * requesting that an elevator comes to pick them up for travel into the given direction.
+     * The system is supposed to make sure that an elevator will eventually reach this floor to pick up the human.
+     * The human can then enter the elevator and request their actual destination within the elevator.
+     * Ideally this has to select the best elevator among all which can reduce the time
+     * for the human spending waiting (either in corridor or in the elevator itself).
+     *
+     * @param atFloor                the floor to pick up the human at, must be within the range served by the system
+     * @param desiredTravelDirection the direction the human wants to travel into,
+     *                               can be used for determination of the best elevator
+     * @return the id of the elevator that was recommended by the system
+     */
     @Override
     public synchronized int requestElevator(int atFloor, TravelDirection desiredTravelDirection) {
-        // This represents a human standing in the corridor,
-        // requesting that an elevator comes to pick them up for travel into the given direction.
-        // The system is supposed to make sure that an elevator will eventually reach this floor to pick up the human.
-        // The human can then enter the elevator and request their actual destination within the elevator.
-        // Ideally this has to select the best elevator among all which can reduce the time
-        // for the human spending waiting (either in corridor or in the elevator itself).
         if (elevators.isEmpty()) {
             throw new IllegalStateException("An elevator was requested, but there are none registered in the system");
         }
@@ -76,15 +83,22 @@ public final class ElevatorSystem implements FloorPanelSystem {
         Elevator elevator = elevators.stream()
                 .filter(e -> e.canServe(atFloor, atFloor + (desiredTravelDirection == TravelDirection.UP ? 1 : -1)))
                 .min((e1, e2) -> {
-                    boolean s1 = e1.canServe(target);
-                    boolean s2 = e1.canServe(target);
-                    if (s1 && s2) {
-                        return Integer.compare(e1.turnsToVisit(target), e2.turnsToVisit(target));
-                    } else if (s1) {
+                    // Calculate the time it would take for both elevators to reach the target
+                    int t1 = e1.turnsToVisit(target);
+                    int t2 = e2.turnsToVisit(target);
+                    // If they both can actually reach it, just compare the numbers
+                    if (t1 >= 0  && t2 >= 0) {
+                        return Integer.compare(t1, t2);
+                    }
+                    // If one of them cannot reach it, prefer the one that can
+                    else if (t1 >= 0) {
                         return -1;
-                    } else if (s2) {
+                    } else if (t2 >= 0) {
                         return 1;
-                    } else {
+                    }
+                    // At this point, the target lies outside the range of both elevators
+                    // In this case, choose the elevator which boundaries lie closest to the target
+                    else {
                         return Integer.compare(
                                 Math.min(Math.abs(e1.getMaxFloor() - target), Math.abs(e1.getMinFloor() - target)),
                                 Math.min(Math.abs(e2.getMaxFloor() - target), Math.abs(e2.getMinFloor() - target))
@@ -93,7 +107,9 @@ public final class ElevatorSystem implements FloorPanelSystem {
                 })
                 .orElseThrow(() -> new IllegalStateException("No elevators can go %s from floor %d".formatted(desiredTravelDirection.name(), atFloor)));
 
-        elevator.requestDestinationFloor(atFloor);
+        if (elevator.canRequestDestinationFloor()) {
+            elevator.requestDestinationFloor(atFloor);
+        }
         return elevator.getId();
     }
 
@@ -105,20 +121,19 @@ public final class ElevatorSystem implements FloorPanelSystem {
 
     public void moveOneFloor() {
         long stepStart = System.nanoTime();
-//        elevators.forEach(Elevator::moveOneFloor);
         moveElevators();
         long stepEnd = System.nanoTime();
-        System.out.printf("Move one floor took %,d ns%n", stepEnd - stepStart);
+        System.out.printf("Move one floor took %,.3f ms%n", (stepEnd - stepStart) / 1e6);
 
         stepStart = System.nanoTime();
-//        elevators.forEach(elevator -> elevatorListeners.forEach(listener -> listener.onElevatorArrivedAtFloor(elevator)));
         fireFloorListeners();
         stepEnd = System.nanoTime();
-        System.out.printf("Listener firing took %,d ns%n", stepEnd - stepStart);
+        System.out.printf("Listener firing took %,.3f ms%n", (stepEnd - stepStart) / 1e6);
     }
 
     /**
-     * Estimate the average target floor that a user might select given a starting floor and a direction.
+     * Estimate average target floor that a user might select given a starting floor and a direction.
+     * Picks the middle floor between the starting floor and the one farthest in the given direction.
      * @return {@link OptionalInt} describing the calculated floor number, or empty if the request doesn't make sense
      * (going up from the topmost floor or down from the bottom floor)
      */
@@ -160,6 +175,10 @@ public final class ElevatorSystem implements FloorPanelSystem {
         });
     }
 
+    /**
+     * Construct a {@link ForkJoinTask} for each member of the specified collection that performs the specified action,
+     * then submit them to the common {@link java.util.concurrent.ForkJoinPool ForkJoinPool} and wait for their completion.
+     */
     private static <V> void performTasksInParallel(Collection<V> targets, Consumer<V> action) {
         List<? extends ForkJoinTask<?>> tasks = targets.stream().map(target -> new RecursiveAction() {
             @Override

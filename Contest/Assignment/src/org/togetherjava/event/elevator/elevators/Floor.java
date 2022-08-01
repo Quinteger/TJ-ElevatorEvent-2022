@@ -1,13 +1,11 @@
 package org.togetherjava.event.elevator.elevators;
 
 import org.togetherjava.event.elevator.humans.ElevatorListener;
-import org.togetherjava.event.elevator.humans.Human;
 import org.togetherjava.event.elevator.humans.Passenger;
 
 import java.util.Collection;
 import java.util.StringJoiner;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 
 class Floor {
     private final int number;

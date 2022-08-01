@@ -94,7 +94,10 @@ public final class Human implements Passenger {
 
                 elevatorPanel.boardPassenger(this);
                 nextDestination = Math.min(elevatorMaxFloor, destinationFloor);
-                elevatorPanel.requestDestinationFloor(nextDestination);
+
+                if (elevatorPanel.canRequestDestinationFloor()) {
+                    elevatorPanel.requestDestinationFloor(nextDestination);
+                }
             } else if (currentFloor > destinationFloor) {
 
                 int elevatorMinFloor = elevatorPanel.getMinFloor();
@@ -105,7 +108,10 @@ public final class Human implements Passenger {
 
                 elevatorPanel.boardPassenger(this);
                 nextDestination = Math.max(elevatorMinFloor, destinationFloor);
-                elevatorPanel.requestDestinationFloor(nextDestination);
+
+                if (elevatorPanel.canRequestDestinationFloor()) {
+                    elevatorPanel.requestDestinationFloor(nextDestination);
+                }
             } else {
                 throw new RuntimeException("A human's current floor matches destination floor, but they are waiting for an elevator, this is a bug");
             }

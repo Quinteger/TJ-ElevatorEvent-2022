@@ -1,5 +1,6 @@
 package org.togetherjava.event.elevator.simulation;
 
+import org.togetherjava.event.elevator.elevators.CommonElevator;
 import org.togetherjava.event.elevator.elevators.Elevator;
 import org.togetherjava.event.elevator.elevators.ElevatorSystem;
 import org.togetherjava.event.elevator.humans.Human;
@@ -22,7 +23,7 @@ public final class Simulation {
     private final List<HumanStatistics> humanStatistics;
 
     public static Simulation createSingleElevatorSingleHumanSimulation() {
-        return new Simulation(List.of(new Elevator(1, 10, 5)),
+        return new Simulation(List.of(new CommonElevator(1, 10, 5)),
                 List.of(new Human(1, 10)));
     }
 
@@ -32,8 +33,8 @@ public final class Simulation {
 
         return new Simulation(
                 List.of(
-                        new Elevator(minFloor, floorsServed, 1),
-                        new Elevator(minFloor, floorsServed, 6)),
+                        new CommonElevator(minFloor, floorsServed, 1),
+                        new CommonElevator(minFloor, floorsServed, 6)),
                 List.of(
                         new Human(1, 2),
                         new Human(1, 5),
@@ -52,9 +53,9 @@ public final class Simulation {
 
         int minFloor = 1;
 
-        List<Elevator> elevators = Stream.generate(() -> {
+        List<? extends Elevator> elevators = Stream.generate(() -> {
             int currentFloor = minFloor + random.nextInt(floorsServed);
-            return new Elevator(minFloor, floorsServed, currentFloor);
+            return new CommonElevator(minFloor, floorsServed, currentFloor);
         }).limit(amountOfElevators).toList();
 
         List<Human> humans = Stream.generate(() -> {
@@ -66,7 +67,7 @@ public final class Simulation {
         return new Simulation(elevators, humans);
     }
 
-    public Simulation(List<Elevator> elevators, List<Human> humans) {
+    public Simulation(List<? extends Elevator> elevators, List<Human> humans) {
         this.elevators = new ArrayList<>(elevators);
         this.humans = new ArrayList<>(humans);
 
