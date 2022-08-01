@@ -55,7 +55,7 @@ class Floor {
         elevators.remove(elevator);
     }
 
-    synchronized int getActivePassengers() {
+    synchronized int getActivePassengersCount() {
         return passengers.size() + elevators.stream().map(e -> e.getPassengers().size()).reduce(0, Integer::sum);
     }
 

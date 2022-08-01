@@ -61,6 +61,9 @@ public final class PaternosterElevator extends Elevator {
     /**
      * Since this is a Paternoster elevator, it will always be able to visit floor in his range,
      * and will never visit other floors.
+     *
+     * @return whether this elevator is currently on the specified floor
+     * or will at some point visit that floor before all its tasks are done.
      */
     @Override
     public boolean willVisitFloor(int floor) {

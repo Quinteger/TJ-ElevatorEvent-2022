@@ -49,7 +49,7 @@ public class MoreSimulations {
                         new Human(1, 7)));
     }
 
-    public static Simulation createSimpleAdvancedSimulation() {
+    public static AdvancedSimulation createSimpleAdvancedSimulation() {
         return new AdvancedSimulation(
                 List.of(
                         new CommonElevator(1, 10, 10),

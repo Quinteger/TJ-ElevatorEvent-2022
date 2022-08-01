@@ -52,7 +52,7 @@ public class Simulation {
         return createRandomSimulation(seed, amountOfElevators, amountOfHumans, floorsServed, Simulation::new);
     }
 
-    public static <T extends Simulation> T createRandomSimulation(long seed, int amountOfElevators, int amountOfHumans, int floorsServed, BiFunction<List<? extends Elevator>, List<Human>, T> factory) {
+    public static <S extends Simulation> S createRandomSimulation(long seed, int amountOfElevators, int amountOfHumans, int floorsServed, BiFunction<List<? extends Elevator>, List<Human>, S> factory) {
         System.out.println("Seed for random simulation is: " + seed);
         Random random = new Random(seed);
 

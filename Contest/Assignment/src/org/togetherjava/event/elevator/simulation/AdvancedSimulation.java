@@ -40,6 +40,7 @@ public final class AdvancedSimulation extends Simulation {
             elevatorSystem.registerElevatorListener(human);
             humans.add(human);
             humanStatistics.add(new HumanStatistics(human));
+            System.out.printf("Added a new human at floor %d which wants to travel to floor %d%n", human.getCurrentFloor(), human.getDestinationFloor());
         }
     }
 }

@@ -127,7 +127,7 @@ public final class ElevatorSystem implements FloorPanelSystem {
 
     public boolean hasActivePassengers() {
         return floors.values().stream()
-                .map(Floor::getActivePassengers)
+                .map(Floor::getActivePassengersCount)
                 .reduce(0, Integer::sum) > 0;
     }
 
@@ -196,7 +196,8 @@ public final class ElevatorSystem implements FloorPanelSystem {
 
     /**
      * Construct a {@link ForkJoinTask} for each member of the specified collection that performs the specified action,
-     * then submit them to the common {@link java.util.concurrent.ForkJoinPool ForkJoinPool} and wait for their completion.
+     * then submit them to the common {@link java.util.concurrent.ForkJoinPool ForkJoinPool} and wait for their completion.<br>
+     * This should probably be separated into a utility class, but at the moment isn't used that much to validate that.
      */
     private static <V> void performTasksInParallel(Collection<V> targets, Consumer<V> action) {
         List<? extends ForkJoinTask<?>> tasks = targets.stream().map(target -> new RecursiveAction() {

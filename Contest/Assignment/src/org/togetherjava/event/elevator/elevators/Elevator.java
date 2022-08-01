@@ -66,6 +66,12 @@ public abstract class Elevator implements ElevatorPanel {
 
     @Override
     public void boardPassenger(Passenger passenger) {
+        if (passengers.contains(passenger)) {
+            throw new IllegalArgumentException("Attempt to add a passenger which is already in the elevator");
+        }
+        if (elevatorSystem == null) {
+            throw new IllegalStateException("Elevator is not connected to an elevator system");
+        }
         passengers.add(passenger);
         elevatorSystem.passengerEnteredElevator(passenger);
     }
@@ -75,13 +81,16 @@ public abstract class Elevator implements ElevatorPanel {
         if (!passengers.contains(passenger)) {
             throw new IllegalArgumentException("Attempt to remove a passenger which is not in the elevator");
         }
+        if (elevatorSystem == null) {
+            throw new IllegalStateException("Elevator is not connected to an elevator system");
+        }
         passengers.remove(passenger);
         elevatorSystem.passengerLeftElevator(passenger, arrived);
     }
 
     /**
      * Whether this elevator accepts requests to move to a floor.
-     * For example, a paternoster elevator does not, because his movement patters is predetermined forever.
+     * For example, a paternoster elevator does not, because his movement pattern is predetermined forever.
      * @see #requestDestinationFloor(int)
      */
     public abstract boolean canRequestDestinationFloor();
@@ -136,6 +145,7 @@ public abstract class Elevator implements ElevatorPanel {
                 .add("minFloor=" + minFloor)
                 .add("maxFloor=" + maxFloor)
                 .add("currentFloor=" + currentFloor)
+                .add("passengers=" + passengers.size())
                 .toString();
     }
 

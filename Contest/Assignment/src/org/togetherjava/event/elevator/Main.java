@@ -19,9 +19,9 @@ public final class Main {
         // with one of them, note down the seed that it prints at the beginning and then use the variant that takes this seed.
         // That way, it will generate the same system again, and you can repeat the test.
 //        Simulation simulation = Simulation.createSingleElevatorSingleHumanSimulation();
-//         Simulation simulation = Simulation.createSimpleSimulation();
-//         Simulation simulation = Simulation.createRandomSimulation(5, 50, 10);
-        // Simulation simulation = Simulation.createRandomSimulation(putDesiredSeedHere, 5, 50, 10);
+//        Simulation simulation = Simulation.createSimpleSimulation();
+//        Simulation simulation = Simulation.createRandomSimulation(5, 50, 10);
+//        Simulation simulation = Simulation.createRandomSimulation(putDesiredSeedHere, 5, 50, 10);
         Simulation simulation = MoreSimulations.createMegaSimulation();
 //        Simulation simulation = MoreSimulations.createMegaAdvancedSimulation();
 //        Simulation simulation = MoreSimulations.createSimpleFailingSimulation();
