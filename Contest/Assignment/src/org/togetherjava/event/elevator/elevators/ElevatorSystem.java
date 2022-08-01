@@ -17,7 +17,6 @@ import java.util.function.Consumer;
  */
 public final class ElevatorSystem implements FloorPanelSystem {
     private final Collection<Elevator> elevators = new HashSet<>();
-    private final Collection<ElevatorListener> elevatorListeners = new HashSet<>();
     private final NavigableMap<Integer, Floor> floors = new TreeMap<>();
 
     public void registerElevator(Elevator elevator) {
@@ -32,7 +31,6 @@ public final class ElevatorSystem implements FloorPanelSystem {
     }
 
     public void registerElevatorListener(ElevatorListener listener) {
-        elevatorListeners.add(listener);
         if (listener instanceof Passenger passenger && passenger.getStartingFloor() != passenger.getDestinationFloor()) {
             floors.get(passenger.getCurrentFloor()).addPassenger(passenger);
         }
@@ -44,7 +42,7 @@ public final class ElevatorSystem implements FloorPanelSystem {
      * Additionally, elevator arrival events are fired so that humans can immediately enter them.
      */
     public void ready() {
-        performTasksInParallel(elevatorListeners, el -> el.onElevatorSystemReady(this));
+        performTasksInParallel(floors.values(), f -> f.fireElevatorRequestEvents(this));
         performTasksInParallel(floors.values(), Floor::fireElevatorArrivalEvents);
     }
 
