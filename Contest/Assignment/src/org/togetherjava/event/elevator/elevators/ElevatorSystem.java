@@ -3,6 +3,7 @@ package org.togetherjava.event.elevator.elevators;
 import org.togetherjava.event.elevator.humans.ElevatorListener;
 import org.togetherjava.event.elevator.humans.Passenger;
 import org.togetherjava.event.elevator.util.ConcurrentUtils;
+import org.togetherjava.event.elevator.util.LogUtils;
 
 import java.util.*;
 
@@ -40,15 +41,8 @@ public final class ElevatorSystem implements FloorPanelSystem {
      * Additionally, elevator arrival events are fired so that humans can immediately enter them.
      */
     public void ready() {
-        long stepStart = System.nanoTime();
-        ConcurrentUtils.performTasksInParallel(floors.values(), f -> f.fireElevatorRequestEvents(this));
-        long stepEnd = System.nanoTime();
-        System.out.printf("Elevator requests took %,.3f ms%n", (stepEnd - stepStart) / 1e6);
-
-        stepStart = System.nanoTime();
-        ConcurrentUtils.performTasksInParallel(floors.values(), Floor::fireElevatorArrivalEvents);
-        stepEnd = System.nanoTime();
-        System.out.printf("Elevator arrivals %,.3f ms%n", (stepEnd - stepStart) / 1e6);
+        LogUtils.measure("Elevator requests", () -> ConcurrentUtils.performTasksInParallel(floors.values(), f -> f.fireElevatorRequestEvents(this)));
+        LogUtils.measure("Elevator arrivals", () -> ConcurrentUtils.performTasksInParallel(floors.values(), Floor::fireElevatorArrivalEvents));
     }
 
     void passengerEnteredElevator(Passenger passenger) {
@@ -143,15 +137,8 @@ public final class ElevatorSystem implements FloorPanelSystem {
     }
 
     public void moveOneFloor() {
-        long stepStart = System.nanoTime();
-        moveElevators();
-        long stepEnd = System.nanoTime();
-        System.out.printf("Move one floor took %,.3f ms%n", (stepEnd - stepStart) / 1e6);
-
-        stepStart = System.nanoTime();
-        fireFloorListeners();
-        stepEnd = System.nanoTime();
-        System.out.printf("Listener firing took %,.3f ms%n", (stepEnd - stepStart) / 1e6);
+        LogUtils.measure("Moving elevators", this::moveElevators);
+        LogUtils.measure("Listener firing", this::fireFloorListeners);
     }
 
     /**

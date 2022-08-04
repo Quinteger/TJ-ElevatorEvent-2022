@@ -1,6 +1,8 @@
 package org.togetherjava.event.elevator.elevators;
 
 import lombok.Getter;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.togetherjava.event.elevator.humans.Passenger;
 
 import java.util.*;
@@ -14,6 +16,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * the elevator will eventually move towards the requested floor and transport humans to their destinations.
  */
 public abstract class Elevator implements ElevatorPanel {
+    protected static final Logger logger  = LogManager.getLogger();
     private static final AtomicInteger NEXT_ID = new AtomicInteger(0);
 
     @Getter protected final int id;
@@ -115,7 +118,7 @@ public abstract class Elevator implements ElevatorPanel {
     synchronized void addPotentialTarget(int potentialTarget) {
         if (!potentialTargets.contains(potentialTarget)) {
             potentialTargets.add(Math.max(Math.min(potentialTarget, maxFloor), minFloor));
-//            System.out.printf("Elevator %d on floor %d has added potential target %d, the queue is now %s, potential targets %s%n", id, currentFloor, potentialTarget, targets, potentialTargets);
+            logger.debug(() -> "Elevator %d on floor %d has added potential target %d, the queue is now %s, potential targets %s".formatted(id, currentFloor, potentialTarget, targets, potentialTargets));
         }
     }
 
@@ -146,7 +149,8 @@ public abstract class Elevator implements ElevatorPanel {
                 // We arrived at the next target
                 modifyTargetsOnArrival();
             }
-        } else {
+        } else if (!potentialTargets.isEmpty()) {
+            logger.debug(() -> "Elevator %d on floor %d is idling and will clear its potential targets".formatted(id, currentFloor));
             potentialTargets.clear();
         }
     }

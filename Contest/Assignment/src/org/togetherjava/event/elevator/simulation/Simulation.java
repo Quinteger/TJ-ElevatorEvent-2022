@@ -1,9 +1,12 @@
 package org.togetherjava.event.elevator.simulation;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.togetherjava.event.elevator.elevators.CommonElevator;
 import org.togetherjava.event.elevator.elevators.Elevator;
 import org.togetherjava.event.elevator.elevators.ElevatorSystem;
 import org.togetherjava.event.elevator.humans.Human;
+import org.togetherjava.event.elevator.util.LogUtils;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -16,6 +19,8 @@ import java.util.stream.LongStream;
 import java.util.stream.Stream;
 
 public class Simulation {
+    private static final Logger logger  = LogManager.getLogger();
+
     protected final List<Human> humans;
     protected final List<Elevator> elevators;
     protected final ElevatorSystem elevatorSystem;
@@ -53,7 +58,7 @@ public class Simulation {
     }
 
     public static <S extends Simulation> S createRandomSimulation(long seed, int amountOfElevators, int amountOfHumans, int floorsServed, SimulationFactory<S> factory) {
-        System.out.println("Seed for random simulation is: " + seed);
+        logger.info("Seed for random simulation is: " + seed);
         Random random = new Random(seed);
 
         int minFloor = 1;
@@ -102,19 +107,12 @@ public class Simulation {
     }
 
     public void start() {
-        long stepStart = System.nanoTime();
-        elevatorSystem.ready();
-        long stepEnd = System.nanoTime();
-        System.out.printf("Ready took %,.3f ms%n", (stepEnd - stepStart) / 1e6);
+        LogUtils.measure("Ready", elevatorSystem::ready);
     }
 
     public void step() {
         elevatorSystem.moveOneFloor();
-
-        long stepStart = System.nanoTime();
-        humanStatistics.forEach(HumanStatistics::step);
-        long stepEnd = System.nanoTime();
-        System.out.printf("Statistics update took %,.3f ms%n", (stepEnd - stepStart) / 1e6);
+        LogUtils.measure("Statistics update", () -> humanStatistics.forEach(HumanStatistics::step));
         stepCount++;
     }
 
@@ -181,6 +179,6 @@ public class Simulation {
     }
 
     public boolean shouldPrint() {
-        return elevators.size() <= 20;
+        return elevatorSystem.getFloorAmount() <= 10 && elevators.size() <= 20;
     }
 }

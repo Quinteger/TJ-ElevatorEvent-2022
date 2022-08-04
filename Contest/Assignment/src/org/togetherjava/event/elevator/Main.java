@@ -1,9 +1,13 @@
 package org.togetherjava.event.elevator;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.togetherjava.event.elevator.simulation.MoreSimulations;
 import org.togetherjava.event.elevator.simulation.Simulation;
+import org.togetherjava.event.elevator.util.LogUtils;
 
 public final class Main {
+    private static final Logger logger  = LogManager.getLogger();
     /**
      * Starts the application.
      * <p>
@@ -22,7 +26,7 @@ public final class Main {
 //        Simulation simulation = Simulation.createSimpleSimulation();
 //        Simulation simulation = Simulation.createRandomSimulation(5, 50, 10);
 //        Simulation simulation = Simulation.createRandomSimulation(putDesiredSeedHere, 5, 50, 10);
-        Simulation simulation = MoreSimulations.createMegaSimulation();
+//        Simulation simulation = MoreSimulations.createMegaSimulation();
 //        Simulation simulation = MoreSimulations.createMegaAdvancedSimulation();
 //        Simulation simulation = MoreSimulations.createSimpleFailingSimulation();
 //        Simulation simulation = MoreSimulations.createSimpleSucceedingSimulation();
@@ -30,24 +34,22 @@ public final class Main {
 //        Simulation simulation = Simulation.createRandomSimulation(1, 100, 1000, 50);
 //        Simulation simulation = MoreSimulations.createSimplePaternosterSimulation();
 //        Simulation simulation = MoreSimulations.createSimpleAdvancedSimulation();
+        Simulation simulation = MoreSimulations.createNotMarkoSimulation();
 
         if (simulation.shouldPrintSummary()) {
             simulation.printSummary();
         }
 
         long simulationStart = System.nanoTime();
-        System.out.println("Starting simulation...");
+        logger.info("Starting simulation...");
         simulation.start();
         if (simulation.shouldPrint()) {
             simulation.prettyPrint();
         }
 
         while (!simulation.isDone()) {
-            System.out.println("\tSimulation step " + simulation.getStepCount());
-            long stepStart = System.nanoTime();
-            simulation.step();
-            long stepEnd = System.nanoTime();
-            System.out.printf("Entire step took %,.3f ms%n", (stepEnd - stepStart) / 1e6);
+            logger.info("Simulation step " + simulation.getStepCount());
+            LogUtils.measure("Simulation step", simulation::step);
             if (simulation.shouldPrint()) {
                 simulation.prettyPrint();
             }
@@ -59,7 +61,7 @@ public final class Main {
             }
         }
         long simulationEnd = System.nanoTime();
-        System.out.printf("Simulation completed in %.3f seconds.%n", (simulationEnd - simulationStart) / 1e9);
+        logger.info("Simulation completed in %.3f seconds.%n".formatted((simulationEnd - simulationStart) / 1e9));
 
         simulation.printResult();
     }

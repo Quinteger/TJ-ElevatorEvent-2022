@@ -65,4 +65,8 @@ public class MoreSimulations {
     public static AdvancedSimulation createMegaAdvancedSimulation() {
         return AdvancedSimulation.createRandomSimulation(3, 100, 100_000, 100);
     }
+
+    public static Simulation createNotMarkoSimulation() {
+        return Simulation.createRandomSimulation(2, 4, 1_000, 50);
+    }
 }

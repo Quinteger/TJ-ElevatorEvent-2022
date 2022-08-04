@@ -70,13 +70,14 @@ public final class CommonElevator extends Elevator {
         var optimalTargets = optimalTargetsRecord.targets();
 
         if (!CollectionUtils.equals(targets, optimalTargets)) {
-            System.out.printf("Elevator on floor %d is rearranging targets after receiving new floor %d, would-be %s, new %s%n", currentFloor, targetFloor, targets, optimalTargets);
+            logger.debug(() -> "Elevator %d on floor %d is rearranging targets after receiving new floor %d, would be %s, new queue %s, potential targets %s, queue length in turns is %d"
+                    .formatted(id, currentFloor, targetFloor, targets, optimalTargets, potentialTargets, optimalTargetsRecord.cost()));
             targets.clear();
             targets.addAll(optimalTargets);
+        } else {
+            logger.debug(() -> "Elevator %d on floor %d has added floor %d to the queue, the queue is now %s, potential targets %s, queue length in turns is %d"
+                    .formatted(id, currentFloor, targetFloor, targets, potentialTargets, optimalTargetsRecord.cost()));
         }
-
-//        System.out.printf("Elevator %d on floor %d has added floor %d to the queue, the queue is now %s, potential targets %s, queue length in turns is %d%n",
-//                id, currentFloor, targetFloor, targets, potentialTargets, optimalTargetsRecord.cost());
     }
 
     /**
