@@ -8,7 +8,8 @@ public final class CollectionUtils {
 
     /**
      * Equality check for collections that do not override {@link #equals(Object)} for some reason.<br>
-     * Not thread-safe, requires external synchronization.
+     * Not thread-safe, requires external synchronization.<br>
+     * Exception generation is delegated to iterators themselves.
      */
     public static boolean equals(Collection<?> c1, Collection<?> c2) {
         if (c1 == c2) {

@@ -32,12 +32,17 @@ public final class CommonElevator extends Elevator {
         return true;
     }
 
+    /**
+     * This represents a human or the elevator system
+     * itself requesting this elevator to eventually move to the given floor.
+     * The elevator is supposed to memorize the destination in a way that
+     * it can ensure to eventually reach it.<br>
+     *
+     * If this method is called by a passenger, it passes itself as the second parameter,
+     * which helps the elevator selection algorithm.
+     */
     @Override
     public synchronized void requestDestinationFloor(int destinationFloor, @Nullable Passenger passenger) {
-        // This represents a human or the elevator system
-        // itself requesting this elevator to eventually move to the given floor.
-        // The elevator is supposed to memorize the destination in a way that
-        // it can ensure to eventually reach it.
         rangeCheck(destinationFloor);
 
         if (passenger != null) {

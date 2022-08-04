@@ -18,14 +18,29 @@ import java.util.concurrent.atomic.AtomicInteger;
  * the elevator will eventually move towards the requested floor and transport humans to their destinations.
  */
 public abstract class Elevator implements ElevatorPanel {
-    protected static final Logger logger  = LogManager.getLogger();
+    protected static final Logger logger = LogManager.getLogger();
     private static final AtomicInteger NEXT_ID = new AtomicInteger(0);
 
     @Getter protected final int id;
     @Getter protected final int minFloor;
     @Getter protected final int maxFloor;
+
+    /**
+     * Currently boarded passengers.
+     */
     @Getter protected final Collection<Passenger> passengers = ConcurrentHashMap.newKeySet();
+
+    /**
+     * Target queue which holds floors that this elevator must visit.
+     */
     protected final Deque<Integer> targets = new ArrayDeque<>();
+
+    /**
+     * A map which holds guesses of next potential targets, populated by the {@link ElevatorSystem}.
+     * This is the whole reason to make the system aware of passengers who make elevator calls.
+     * It's not necessary, but is believed to ever so slightly improve the elevator selection algorithm
+     * over just a simple set/list of potential targets without owners.
+     */
     protected final Map<ElevatorListener, Integer> potentialTargets = new LinkedHashMap<>();
     @Getter protected int currentFloor;
     /**
@@ -116,10 +131,6 @@ public abstract class Elevator implements ElevatorPanel {
     public abstract void requestDestinationFloor(int destinationFloor, @Nullable Passenger passenger);
 
     synchronized void addPotentialTarget(int potentialTarget, ElevatorListener listener) {
-//        if (!potentialTargets.contains(potentialTarget)) {
-//            potentialTargets.add(Math.max(Math.min(potentialTarget, maxFloor), minFloor));
-//            logger.debug(() -> "Elevator %d on floor %d has added potential target %d, the queue is now %s, potential targets %s".formatted(id, currentFloor, potentialTarget, targets, potentialTargets));
-//        }
         if (!potentialTargets.containsKey(listener) && !potentialTargets.containsValue(potentialTarget)) {
             potentialTargets.put(listener, clampFloor(potentialTarget));
             logger.debug(() -> "Elevator %d on floor %d has added potential target %d, the queue is now %s, potential targets %s".formatted(id, currentFloor, potentialTarget, targets, potentialTargets.values()));
