@@ -4,7 +4,7 @@ import org.togetherjava.event.elevator.elevators.Elevator;
 import org.togetherjava.event.elevator.humans.Human;
 
 import java.util.List;
-import java.util.Random;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * A simulation that adds humans while it's running.
@@ -29,7 +29,7 @@ public final class AdvancedSimulation extends Simulation {
     }
 
     private void addMoreHumans(int amount) {
-        Random random = new Random();
+        var random = ThreadLocalRandom.current();
 
         int maxFloor = elevatorSystem.getMaxFloor();
         int minFloor = elevatorSystem.getMinFloor();

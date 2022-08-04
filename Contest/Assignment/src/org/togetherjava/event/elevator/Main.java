@@ -31,17 +31,24 @@ public final class Main {
 //        Simulation simulation = MoreSimulations.createSimplePaternosterSimulation();
 //        Simulation simulation = MoreSimulations.createSimpleAdvancedSimulation();
 
-        simulation.printSummary();
+        if (simulation.shouldPrintSummary()) {
+            simulation.printSummary();
+        }
 
         long simulationStart = System.nanoTime();
         System.out.println("Starting simulation...");
         simulation.start();
-        simulation.prettyPrint();
+        if (simulation.shouldPrint()) {
+            simulation.prettyPrint();
+        }
 
         while (!simulation.isDone()) {
             System.out.println("\tSimulation step " + simulation.getStepCount());
+            long stepStart = System.nanoTime();
             simulation.step();
-            if (simulation.shouldPrettyPrint()) {
+            long stepEnd = System.nanoTime();
+            System.out.printf("Entire step took %,.3f ms%n", (stepEnd - stepStart) / 1e6);
+            if (simulation.shouldPrint()) {
                 simulation.prettyPrint();
             }
 //            simulation.printCurrentStatistics();

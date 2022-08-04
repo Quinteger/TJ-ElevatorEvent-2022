@@ -21,6 +21,7 @@ public abstract class Elevator implements ElevatorPanel {
     @Getter protected final int maxFloor;
     @Getter protected final Collection<Passenger> passengers = ConcurrentHashMap.newKeySet();
     protected final Deque<Integer> targets = new ArrayDeque<>();
+    protected final Collection<Integer> potentialTargets = ConcurrentHashMap.newKeySet();
     @Getter protected int currentFloor;
     /**
      * An elevator should be aware of the system it belongs to.
@@ -57,6 +58,10 @@ public abstract class Elevator implements ElevatorPanel {
         return maxFloor - minFloor + 1;
     }
 
+    public int getTaskCount() {
+        return targets.size();
+    }
+
     void setElevatorSystem(ElevatorSystem elevatorSystem) {
         if (elevatorSystem == null) {
             throw new IllegalArgumentException("Elevator system must not be null");
@@ -66,11 +71,11 @@ public abstract class Elevator implements ElevatorPanel {
 
     @Override
     public void boardPassenger(Passenger passenger) {
-        if (passengers.contains(passenger)) {
-            throw new IllegalArgumentException("Attempt to add a passenger which is already in the elevator");
-        }
         if (elevatorSystem == null) {
             throw new IllegalStateException("Elevator is not connected to an elevator system");
+        }
+        if (passengers.contains(passenger)) {
+            throw new IllegalArgumentException("Attempt to add a passenger which is already in the elevator");
         }
         passengers.add(passenger);
         elevatorSystem.passengerEnteredElevator(passenger);
@@ -78,11 +83,11 @@ public abstract class Elevator implements ElevatorPanel {
 
     @Override
     public void removePassenger(Passenger passenger, boolean arrived) {
-        if (!passengers.contains(passenger)) {
-            throw new IllegalArgumentException("Attempt to remove a passenger which is not in the elevator");
-        }
         if (elevatorSystem == null) {
             throw new IllegalStateException("Elevator is not connected to an elevator system");
+        }
+        if (!passengers.contains(passenger)) {
+            throw new IllegalArgumentException("Attempt to remove a passenger which is not in the elevator");
         }
         passengers.remove(passenger);
         elevatorSystem.passengerLeftElevator(passenger, arrived);
@@ -107,6 +112,13 @@ public abstract class Elevator implements ElevatorPanel {
     @Override
     public abstract void requestDestinationFloor(int destinationFloor);
 
+    void addPotentialTarget(int potentialTarget) {
+        if (!willVisitFloor(potentialTarget) && !potentialTargets.contains(potentialTarget)) {
+            potentialTargets.add(Math.max(Math.min(potentialTarget, maxFloor), minFloor));
+            System.out.printf("Elevator %d on floor %d has added potential target %d, the queue is now %s, potential targets %s%n", id, currentFloor, potentialTarget, targets, potentialTargets);
+        }
+    }
+
     /**
      * Essentially there are three possibilities:
      * <ul>
@@ -130,10 +142,13 @@ public abstract class Elevator implements ElevatorPanel {
             } else {
                 throw new IllegalArgumentException("Elevator has current floor as next target, this is a bug");
             }
+            potentialTargets.remove(currentFloor);
             if (currentFloor == target) {
                 // We arrived at the next target
                 modifyTargetsOnArrival();
             }
+        } else {
+            potentialTargets.clear();
         }
     }
 
@@ -174,7 +189,9 @@ public abstract class Elevator implements ElevatorPanel {
 
     /**
      * @return the minimum amount of turns it would take for this elevator to visit a specified sequence of floors
-     * (either indirectly by passing by or by creating new tasks), or -1 if it's impossible or of the input array is empty
+     * (either indirectly by passing by or by creating new tasks),
+     * taking into account all potential targets of this elevator,
+     * or -1 if it's impossible or of the input array is empty
      * @implNote a choice was made to use {@code int} over {@link OptionalInt OptionalInt}
      * since the amount of turns cannot be negative
      */
@@ -185,7 +202,11 @@ public abstract class Elevator implements ElevatorPanel {
 
         int count = 0;
         int previousTarget = currentFloor;
-        Iterator<Integer> targetItr = targets.iterator();
+
+        Collection<Integer> allTargets = new ArrayList<>(targets.size() + potentialTargets.size());
+        allTargets.addAll(targets);
+        allTargets.addAll(potentialTargets);
+        Iterator<Integer> targetItr = allTargets.iterator();
         Iterator<Integer> floorItr = Arrays.stream(floors).iterator();
 
         int nextFloor = floorItr.next();

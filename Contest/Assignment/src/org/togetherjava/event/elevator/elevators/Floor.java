@@ -72,7 +72,7 @@ class Floor {
     }
 
     /**
-     * Notify all passengers that wait on this floor that they may enter an elevator if they wish.
+     * Notify all passengers on this floor that they may enter an elevator if they wish.
      */
     synchronized void fireElevatorArrivalEvents() {
         for (Passenger passenger : passengers) {
@@ -83,7 +83,7 @@ class Floor {
     }
 
     /**
-     * Notify all idle passengers that wait on this floor that they may request an elevator if they wish.
+     * Notify all passengers on this floor that they may request an elevator if they wish.
      */
     synchronized void fireElevatorRequestEvents(FloorPanelSystem floorPanelSystem) {
         for (Passenger passenger : passengers) {

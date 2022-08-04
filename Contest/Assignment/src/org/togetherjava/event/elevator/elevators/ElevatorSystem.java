@@ -42,8 +42,15 @@ public final class ElevatorSystem implements FloorPanelSystem {
      * Additionally, elevator arrival events are fired so that humans can immediately enter them.
      */
     public void ready() {
+        long stepStart = System.nanoTime();
         performTasksInParallel(floors.values(), f -> f.fireElevatorRequestEvents(this));
+        long stepEnd = System.nanoTime();
+        System.out.printf("Elevator requests took %,.3f ms%n", (stepEnd - stepStart) / 1e6);
+
+        stepStart = System.nanoTime();
         performTasksInParallel(floors.values(), Floor::fireElevatorArrivalEvents);
+        stepEnd = System.nanoTime();
+        System.out.printf("Elevator arrivals %,.3f ms%n", (stepEnd - stepStart) / 1e6);
     }
 
     void passengerEnteredElevator(Passenger passenger) {
@@ -82,8 +89,8 @@ public final class ElevatorSystem implements FloorPanelSystem {
                 .filter(e -> e.canServe(atFloor, atFloor + (desiredTravelDirection == TravelDirection.UP ? 1 : -1)))
                 .min((e1, e2) -> {
                     // Calculate the time it would take for both elevators to reach the target
-                    int t1 = e1.turnsToVisit(target);
-                    int t2 = e2.turnsToVisit(target);
+                    int t1 = e1.turnsToVisit(atFloor, target);
+                    int t2 = e2.turnsToVisit(atFloor, target);
                     // If they both can actually reach it, just compare the numbers
                     if (t1 >= 0  && t2 >= 0) {
                         return Integer.compare(t1, t2);
@@ -96,18 +103,17 @@ public final class ElevatorSystem implements FloorPanelSystem {
                     }
                     // At this point, the target lies outside the range of both elevators
                     // In this case, choose the elevator which boundaries lie closest to the target
-                    else {
-                        return Integer.compare(
-                                Math.min(Math.abs(e1.getMaxFloor() - target), Math.abs(e1.getMinFloor() - target)),
-                                Math.min(Math.abs(e2.getMaxFloor() - target), Math.abs(e2.getMinFloor() - target))
-                        );
-                    }
+                    return Integer.compare(
+                            Math.min(Math.abs(e1.getMaxFloor() - target), Math.abs(e1.getMinFloor() - target)),
+                            Math.min(Math.abs(e2.getMaxFloor() - target), Math.abs(e2.getMinFloor() - target))
+                    );
                 })
                 .orElseThrow(() -> new IllegalStateException("No elevators can go %s from floor %d".formatted(desiredTravelDirection.name(), atFloor)));
 
         if (elevator.canRequestDestinationFloor()) {
             elevator.requestDestinationFloor(atFloor);
         }
+        elevator.addPotentialTarget(target);
         return elevator.getId();
     }
 

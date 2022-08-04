@@ -98,13 +98,19 @@ public class Simulation {
     }
 
     public void start() {
+        long stepStart = System.nanoTime();
         elevatorSystem.ready();
+        long stepEnd = System.nanoTime();
+        System.out.printf("Ready took %,.3f ms%n", (stepEnd - stepStart) / 1e6);
     }
 
     public void step() {
         elevatorSystem.moveOneFloor();
 
+        long stepStart = System.nanoTime();
         humanStatistics.forEach(HumanStatistics::step);
+        long stepEnd = System.nanoTime();
+        System.out.printf("Statistics update took %,.3f ms%n", (stepEnd - stepStart) / 1e6);
         stepCount++;
     }
 
@@ -166,7 +172,11 @@ public class Simulation {
                 .collect(Collectors.toMap((HumanStatistics stat) -> stat.getHuman().getCurrentState(), s -> 1, Integer::sum)));
     }
 
-    public boolean shouldPrettyPrint() {
+    public boolean shouldPrintSummary() {
+        return elevators.size() <= 100 && humans.size() <= 100;
+    }
+
+    public boolean shouldPrint() {
         return elevators.size() <= 20;
     }
 }

@@ -1,5 +1,7 @@
 package org.togetherjava.event.elevator.elevators;
 
+import java.util.*;
+
 /**
  * A single elevator that can serve a given amount of floors.
  * <p>
@@ -35,7 +37,6 @@ public final class CommonElevator extends Elevator {
         // Let's check if the work queue already contains the desired floor
         if (!willVisitFloor(destinationFloor)) {
             addTargetFloor(destinationFloor);
-            System.out.printf("Elevator %d on floor %d has added floor %d to the queue, the queue is now %s%n", id, currentFloor, destinationFloor, targets);
         }
     }
 
@@ -60,7 +61,79 @@ public final class CommonElevator extends Elevator {
             }
         }
         targets.add(targetFloor);
+
+        var optimalTargetsRecord = rearrangeTargets(currentFloor, targets);
+        var optimalTargets = optimalTargetsRecord.targets();
+
+        boolean shouldReplace = false;
+        if (targets.size() != optimalTargets.size()) {
+            shouldReplace = true;
+        } else {
+            var oldItr = targets.iterator();
+            var newItr = optimalTargets.iterator();
+            for (;oldItr.hasNext() && newItr.hasNext();) {
+                if (!oldItr.next().equals(newItr.next())) {
+                    shouldReplace = true;
+                    break;
+                }
+            }
+        }
+        if (shouldReplace) {
+            System.out.printf("Elevator on floor %d is rearranging targets after receiving new floor %d, would-be %s, new %s%n", currentFloor, targetFloor, targets, optimalTargets);
+            targets.clear();
+            targets.addAll(optimalTargets);
+        }
+
+        System.out.printf("Elevator %d on floor %d has added floor %d to the queue, the queue is now %s, potential targets %s, queue length in turns is %d%n",
+                id, currentFloor, targetFloor, targets, potentialTargets, optimalTargetsRecord.cost());
     }
+
+    private static OptimalTargetsAndCost rearrangeTargets(int from, Deque<Integer> targets) {
+        int size = targets.size();
+        if (size == 0) {
+            // No targets - no need to move
+            return new OptimalTargetsAndCost(from, targets, 0);
+        } else if (size == 1) {
+            return new OptimalTargetsAndCost(from, targets, Math.abs(targets.getFirst() - from));
+        } else if (size == 2) {
+            int e1 = targets.getFirst();
+            int e2 = targets.getLast();
+            // c1 represents cost as is, c2 represents cost if the two elements were flipped
+            int c1 = Math.abs(e2 - e1) + Math.abs(e1 - from);
+            int c2 = Math.abs(e1 - e2) + Math.abs(e2 - from);
+            int cost;
+            if (c2 < c1) {
+                // Flip the two elements
+                targets.addLast(targets.removeFirst());
+                cost = c2;
+            } else {
+                cost = c1;
+            }
+            return new OptimalTargetsAndCost(from, targets, cost);
+        } else {
+            return targets.stream()
+                    .map(nextFrom -> {
+                        var recursiveTargets = new ArrayDeque<Integer>(targets.size() - 1);
+                        targets.iterator().forEachRemaining(e -> {
+                            if (!e.equals(nextFrom)) {
+                                recursiveTargets.addLast(e);
+                            }
+                        });
+                        return  rearrangeTargets(nextFrom, recursiveTargets);
+                    })
+                    .min(Comparator.comparingInt(r -> r.cost() + Math.abs(r.from() - from)))
+                    .map(r -> {
+                        var oldTargets = r.targets();
+                        var newTargets = new ArrayDeque<Integer>(oldTargets.size() + 1);
+                        newTargets.addAll(oldTargets);
+                        newTargets.addFirst(r.from());
+                        return new OptimalTargetsAndCost(from, newTargets, r.cost() + Math.abs(r.from() - from));
+                    })
+                    .orElseThrow(() -> new RuntimeException("Target sorting is functioning incorrectly"));
+        }
+    }
+
+    private record OptimalTargetsAndCost(int from, Deque<Integer> targets, int cost) {}
 
     @Override
     protected void modifyTargetsOnArrival() {
@@ -89,15 +162,15 @@ public final class CommonElevator extends Elevator {
             return true;
         }
 
-        int previousTarget = currentFloor;
+        int min = currentFloor;
+        int max = currentFloor;
         for (int nextTarget : targets) {
             // If the target floor is already on the path between floors, return true
-            int min = Math.min(previousTarget, nextTarget);
-            int max = Math.max(previousTarget, nextTarget);
+            min = Math.min(min, nextTarget);
+            max = Math.max(max, nextTarget);
             if (min <= floor && floor <= max) {
                 return true;
             }
-            previousTarget = nextTarget;
         }
         return false;
     }
