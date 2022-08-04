@@ -52,7 +52,7 @@ public class Simulation {
         return createRandomSimulation(seed, amountOfElevators, amountOfHumans, floorsServed, Simulation::new);
     }
 
-    public static <S extends Simulation> S createRandomSimulation(long seed, int amountOfElevators, int amountOfHumans, int floorsServed, BiFunction<List<? extends Elevator>, List<Human>, S> factory) {
+    public static <S extends Simulation> S createRandomSimulation(long seed, int amountOfElevators, int amountOfHumans, int floorsServed, SimulationFactory<S> factory) {
         System.out.println("Seed for random simulation is: " + seed);
         Random random = new Random(seed);
 
@@ -69,7 +69,11 @@ public class Simulation {
             return new Human(startingFloor, destinationFloor);
         }).limit(amountOfHumans).toList();
 
-        return factory.apply(elevators, humans);
+        return factory.createSimulation(elevators, humans);
+    }
+
+    interface SimulationFactory<S extends Simulation> {
+        S createSimulation(List<? extends Elevator> elevators, List<Human> humans);
     }
 
     public Simulation(List<? extends Elevator> elevators, List<Human> humans) {
