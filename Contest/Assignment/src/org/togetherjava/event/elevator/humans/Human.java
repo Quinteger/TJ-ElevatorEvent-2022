@@ -71,7 +71,7 @@ public final class Human implements Passenger {
                 currentState = State.ARRIVED;
                 return;
             }
-            expectedElevatorId = floorPanelSystem.requestElevator(currentFloor, direction);
+            expectedElevatorId = floorPanelSystem.requestElevator(currentFloor, direction, this);
             currentState = State.WAITING_FOR_ELEVATOR;
         }
     }
@@ -96,7 +96,7 @@ public final class Human implements Passenger {
                 nextDestination = Math.min(elevatorMaxFloor, destinationFloor);
 
                 if (elevatorPanel.canRequestDestinationFloor()) {
-                    elevatorPanel.requestDestinationFloor(nextDestination);
+                    elevatorPanel.requestDestinationFloor(nextDestination, this);
                 }
             } else if (currentFloor > destinationFloor) {
 
@@ -110,7 +110,7 @@ public final class Human implements Passenger {
                 nextDestination = Math.max(elevatorMinFloor, destinationFloor);
 
                 if (elevatorPanel.canRequestDestinationFloor()) {
-                    elevatorPanel.requestDestinationFloor(nextDestination);
+                    elevatorPanel.requestDestinationFloor(nextDestination, this);
                 }
             } else {
                 throw new RuntimeException("A human's current floor matches destination floor, but they are waiting for an elevator, this is a bug");

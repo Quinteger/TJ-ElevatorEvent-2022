@@ -1,8 +1,12 @@
 package org.togetherjava.event.elevator.elevators;
 
+import org.jetbrains.annotations.Nullable;
+import org.togetherjava.event.elevator.humans.Passenger;
 import org.togetherjava.event.elevator.util.CollectionUtils;
 
-import java.util.*;
+import java.util.ArrayDeque;
+import java.util.Comparator;
+import java.util.Deque;
 
 /**
  * A single elevator that can serve a given amount of floors.
@@ -29,12 +33,16 @@ public final class CommonElevator extends Elevator {
     }
 
     @Override
-    public synchronized void requestDestinationFloor(int destinationFloor) {
+    public synchronized void requestDestinationFloor(int destinationFloor, @Nullable Passenger passenger) {
         // This represents a human or the elevator system
         // itself requesting this elevator to eventually move to the given floor.
         // The elevator is supposed to memorize the destination in a way that
         // it can ensure to eventually reach it.
         rangeCheck(destinationFloor);
+
+        if (passenger != null) {
+            potentialTargets.remove(passenger);
+        }
 
         // Let's check if the work queue already contains the desired floor
         if (!willVisitFloor(destinationFloor)) {
@@ -49,34 +57,19 @@ public final class CommonElevator extends Elevator {
      * It is expected that this method is called in a synchronized context.
      */
     private void addTargetFloor(int targetFloor) {
-        if (!targets.isEmpty()) {
-            int to = targets.removeLast();
-            int from = targets.isEmpty() ? currentFloor : targets.getLast();
-            if (from < to) {
-                if (targetFloor < to) {
-                    targets.add(to);
-                }
-            } else if (from > to) {
-                if (targetFloor > to) {
-                    targets.add(to);
-                }
-            } else {
-                throw new IllegalArgumentException("Elevator has two of the same floors as consecutive targets, this is a bug");
-            }
-        }
         targets.add(targetFloor);
 
         var optimalTargetsRecord = rearrangeTargets(currentFloor, targets);
-        var optimalTargets = optimalTargetsRecord.targets();
+        var optimalTargets = compressTargets(optimalTargetsRecord.targets());
 
         if (!CollectionUtils.equals(targets, optimalTargets)) {
             logger.debug(() -> "Elevator %d on floor %d is rearranging targets after receiving new floor %d, would be %s, new queue %s, potential targets %s, queue length in turns is %d"
-                    .formatted(id, currentFloor, targetFloor, targets, optimalTargets, potentialTargets, optimalTargetsRecord.cost()));
+                    .formatted(id, currentFloor, targetFloor, targets, optimalTargets, potentialTargets.values(), optimalTargetsRecord.cost()));
             targets.clear();
             targets.addAll(optimalTargets);
         } else {
             logger.debug(() -> "Elevator %d on floor %d has added floor %d to the queue, the queue is now %s, potential targets %s, queue length in turns is %d"
-                    .formatted(id, currentFloor, targetFloor, targets, potentialTargets, optimalTargetsRecord.cost()));
+                    .formatted(id, currentFloor, targetFloor, targets, potentialTargets.values(), optimalTargetsRecord.cost()));
         }
     }
 
@@ -85,7 +78,7 @@ public final class CommonElevator extends Elevator {
      * in the specified deque.<br>
      * It is assumed that the input deque is in synchronized context and does not contain duplicates.<br>
      * No guarantee is made that the deque reference contained in the returned record will be the same
-     * or different to the input deque.
+     * or different as the input deque. However, if it's the same, it won't get mutated.
      */
     private static OptimalTargetsAndCost rearrangeTargets(int from, Deque<Integer> targets) {
         int size = targets.size();
@@ -103,31 +96,40 @@ public final class CommonElevator extends Elevator {
             int c1 = Math.abs(e2 - e1) + Math.abs(e1 - from);
             int c2 = Math.abs(e1 - e2) + Math.abs(e2 - from);
             int cost;
+            var newDeque = new ArrayDeque<Integer>(2);
             if (c2 < c1) {
                 // Flip the two elements
-                targets.addLast(targets.removeFirst());
                 cost = c2;
+                newDeque.addFirst(e2);
+                newDeque.addLast(e1);
             } else {
                 cost = c1;
+                newDeque.addFirst(e1);
+                newDeque.addLast(e2);
             }
-            return new OptimalTargetsAndCost(from, targets, cost);
+            return new OptimalTargetsAndCost(from, newDeque, cost);
         } else {
-            // Anything with N targets, where N > 2, gets decomposed into N - 1 recursive method calls,
-            // one for each of the new starting points
+            // Anything with N targets, where N > 2, gets decomposed into N recursive method calls,
+            // where each element becomes the new starting point and the rest act as new targets
             return targets.stream()
                     // First off, decompose and do recursive calls
                     .map(nextFrom -> {
                         var recursiveTargets = new ArrayDeque<Integer>(targets.size() - 1);
-                        targets.iterator().forEachRemaining(e -> {
+                        boolean encounteredSameElement = false;
+                        for (Integer e : targets) {
                             if (!e.equals(nextFrom)) {
                                 recursiveTargets.addLast(e);
+                            } else if (!encounteredSameElement) {
+                                encounteredSameElement = true;
+                            } else {
+                                throw new RuntimeException("Input queue contains a duplicate");
                             }
-                        });
+                        }
                         return rearrangeTargets(nextFrom, recursiveTargets);
                     })
                     // Then, filter out the result with the smallest potential cost
                     .min(Comparator.comparingInt(r -> r.cost() + Math.abs(r.from() - from)))
-                    // Finally, perform the object creation since
+                    // Finally, perform the object creation since there's just one element left
                     .map(r -> {
                         var oldTargets = r.targets();
                         var newTargets = new ArrayDeque<Integer>(oldTargets.size() + 1);
@@ -140,7 +142,7 @@ public final class CommonElevator extends Elevator {
     }
 
     /**
-     * A record that holds intermediate search results.
+     * A record that holds intermediate or terminal search results.
      *
      * @param from starting point
      * @param targets a deque holding points to visit, sorted in the optimal order
@@ -148,18 +150,47 @@ public final class CommonElevator extends Elevator {
      */
     private record OptimalTargetsAndCost(int from, Deque<Integer> targets, int cost) {}
 
+    /**
+     * Compress a given target deque, returning a new deque with removed unnecessary intermediate targets.<br>
+     * No guarantee is made that the deque reference contained in the returned record will be the same
+     * or different as the input deque. However, if it's the same, it won't get mutated.<br>
+     * It is expected that this method is called in a synchronized context.
+     */
+    private Deque<Integer> compressTargets(Deque<Integer> deque) {
+        int size = deque.size();
+        if (size <= 1) {
+            // There is nothing to compress
+            return deque;
+        }
+        boolean wasCompressed = false;
+        var newDeque = new ArrayDeque<Integer>(size);
+        var itr = deque.iterator();
+        int first = currentFloor;
+        int second = itr.next();
+        newDeque.addLast(second);
+        int third;
+        while (itr.hasNext()) {
+            third = itr.next();
+            if (Integer.compare(first, second) == Integer.compare(second, third)) {
+                // Compression takes place, so we do not advance first
+                newDeque.removeLast();
+                wasCompressed = true;
+            } else {
+                // No compression, advance first
+                first = second;
+            }
+            newDeque.addLast(third);
+            second = third;
+        }
+        if (wasCompressed) {
+            logger.debug(() -> "Elevator queue was compressed, start at %d, previous %s, new %s".formatted(currentFloor, deque, newDeque));
+        }
+        return newDeque;
+    }
+
     @Override
     protected void modifyTargetsOnArrival() {
         targets.remove();
-    }
-
-    /**
-     * @throws IllegalArgumentException if the specified floor cannot be served by this elevator.
-     */
-    private void rangeCheck(int floor) {
-        if (!canServe(floor)) {
-            throw new IllegalArgumentException("Elevator cannot serve floor %d, only %d to %d are available".formatted(floor, minFloor, maxFloor));
-        }
     }
 
     /**

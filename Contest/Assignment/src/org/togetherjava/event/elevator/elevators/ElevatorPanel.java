@@ -1,5 +1,6 @@
 package org.togetherjava.event.elevator.elevators;
 
+import org.jetbrains.annotations.Nullable;
 import org.togetherjava.event.elevator.humans.Passenger;
 
 /**
@@ -29,13 +30,19 @@ public interface ElevatorPanel {
     boolean canRequestDestinationFloor();
 
     /**
-     * Requesting the elevator to eventually move to the given destination floor, for humans to exit.
+     * Requesting the elevator to eventually move to the given destination floor, for humans to exit or enter.<br>
+     * By default, behaves the same way as {@link #requestDestinationFloor(int, Passenger)} with
+     * {@code null} as the second argument.
      *
      * @param destinationFloor the desired destination, must be within the range served by this elevator
      * @throws UnsupportedOperationException if the operation is not supported by this elevator
      * @see #canRequestDestinationFloor()
      */
-    void requestDestinationFloor(int destinationFloor);
+    default void requestDestinationFloor(int destinationFloor) {
+        requestDestinationFloor(destinationFloor, null);
+    }
+
+    // New methods below
 
     /**
      * The lowest floor the elevator can travel to.
@@ -60,4 +67,15 @@ public interface ElevatorPanel {
      * @throws IllegalArgumentException if the elevator does not have the specified passenger
      */
     void removePassenger(Passenger passenger, boolean arrived);
+
+    /**
+     * Requesting the elevator to eventually move to the given destination floor, for humans to exit or enter.<br>
+     * Calling the method with {@code null} as second argument will mean that the request was made by the system.
+     *
+     * @param destinationFloor the desired destination, must be within the range served by this elevator
+     * @param passenger passenger that requested this operation, null if the operation was requested by the system itself
+     * @throws UnsupportedOperationException if the operation is not supported by this elevator
+     * @see #canRequestDestinationFloor()
+     */
+    void requestDestinationFloor(int destinationFloor, @Nullable Passenger passenger);
 }

@@ -26,7 +26,7 @@ public final class Main {
 //        Simulation simulation = Simulation.createSimpleSimulation();
 //        Simulation simulation = Simulation.createRandomSimulation(5, 50, 10);
 //        Simulation simulation = Simulation.createRandomSimulation(putDesiredSeedHere, 5, 50, 10);
-//        Simulation simulation = MoreSimulations.createMegaSimulation();
+        Simulation simulation = MoreSimulations.createMegaSimulation();
 //        Simulation simulation = MoreSimulations.createMegaAdvancedSimulation();
 //        Simulation simulation = MoreSimulations.createSimpleFailingSimulation();
 //        Simulation simulation = MoreSimulations.createSimpleSucceedingSimulation();
@@ -34,7 +34,7 @@ public final class Main {
 //        Simulation simulation = Simulation.createRandomSimulation(1, 100, 1000, 50);
 //        Simulation simulation = MoreSimulations.createSimplePaternosterSimulation();
 //        Simulation simulation = MoreSimulations.createSimpleAdvancedSimulation();
-        Simulation simulation = MoreSimulations.createNotMarkoSimulation();
+//        Simulation simulation = MoreSimulations.createNotMarkoSimulation();
 
         if (simulation.shouldPrintSummary()) {
             simulation.printSummary();

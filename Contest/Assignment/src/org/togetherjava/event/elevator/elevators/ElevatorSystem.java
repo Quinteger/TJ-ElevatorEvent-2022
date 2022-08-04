@@ -66,16 +66,16 @@ public final class ElevatorSystem implements FloorPanelSystem {
      * @param atFloor                the floor to pick up the human at, must be within the range served by the system
      * @param desiredTravelDirection the direction the human wants to travel into,
      *                               can be used for determination of the best elevator
+     * @param listener               (NEW) the listener that requested the operation
      * @return the id of the elevator that was recommended by the system
      */
     @Override
-    public int requestElevator(int atFloor, TravelDirection desiredTravelDirection) {
+    public int requestElevator(int atFloor, TravelDirection desiredTravelDirection, ElevatorListener listener) {
         Elevator elevator;
 
         int target = calculateAverageTarget(atFloor, desiredTravelDirection)
                 .orElseThrow(() -> new IllegalArgumentException("Impossible to travel %s from floor %d".formatted(desiredTravelDirection.name(), atFloor)));
 
-//        long start = System.nanoTime();
         synchronized (elevators) {
             if (elevators.isEmpty()) {
                 throw new IllegalStateException("An elevator was requested, but there are none registered in the system");
@@ -112,9 +112,8 @@ public final class ElevatorSystem implements FloorPanelSystem {
             elevator.requestDestinationFloor(atFloor);
         }
 
-        elevator.addPotentialTarget(target);
-//        long end = System.nanoTime();
-//        System.out.printf("Single elevator request took %,.3f ms%n", (end - start) / 1e6);
+        elevator.addPotentialTarget(target, listener);
+
         return elevator.getId();
     }
 

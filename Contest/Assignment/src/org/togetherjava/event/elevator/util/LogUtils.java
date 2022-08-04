@@ -12,6 +12,10 @@ public final class LogUtils {
         measure(name, toLog, Level.INFO);
     }
 
+    /**
+     * If the specified log level is enabled, measure the execution time of the specified runnable,
+     * then output the result at that logging level. Otherwise, just execute the runnable.
+     */
     public static void measure(String name, Runnable toLog, Level level) {
         if (logger.isEnabled(level)) {
             long start = System.nanoTime();

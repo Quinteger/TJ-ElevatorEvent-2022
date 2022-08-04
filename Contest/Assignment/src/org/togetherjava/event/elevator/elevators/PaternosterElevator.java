@@ -1,5 +1,8 @@
 package org.togetherjava.event.elevator.elevators;
 
+import org.jetbrains.annotations.Nullable;
+import org.togetherjava.event.elevator.humans.Passenger;
+
 /**
  * A Paternoster lift which endlessly travels in a range between two floors. It cannot take requests.
  */
@@ -46,7 +49,7 @@ public final class PaternosterElevator extends Elevator {
     }
 
     @Override
-    public synchronized void requestDestinationFloor(int destinationFloor) {
+    public synchronized void requestDestinationFloor(int destinationFloor, @Nullable Passenger passenger) {
         throw new UnsupportedOperationException("Paternoster elevator does not accept requests");
     }
 

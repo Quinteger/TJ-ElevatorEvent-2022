@@ -3,6 +3,8 @@ package org.togetherjava.event.elevator.elevators;
 import lombok.Getter;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.jetbrains.annotations.Nullable;
+import org.togetherjava.event.elevator.humans.ElevatorListener;
 import org.togetherjava.event.elevator.humans.Passenger;
 
 import java.util.*;
@@ -24,7 +26,7 @@ public abstract class Elevator implements ElevatorPanel {
     @Getter protected final int maxFloor;
     @Getter protected final Collection<Passenger> passengers = ConcurrentHashMap.newKeySet();
     protected final Deque<Integer> targets = new ArrayDeque<>();
-    protected final Collection<Integer> potentialTargets = ConcurrentHashMap.newKeySet();
+    protected final Map<ElevatorListener, Integer> potentialTargets = new LinkedHashMap<>();
     @Getter protected int currentFloor;
     /**
      * An elevator should be aware of the system it belongs to.
@@ -72,7 +74,6 @@ public abstract class Elevator implements ElevatorPanel {
         this.elevatorSystem = elevatorSystem;
     }
 
-    @Override
     public void boardPassenger(Passenger passenger) {
         if (elevatorSystem == null) {
             throw new IllegalStateException("Elevator is not connected to an elevator system");
@@ -84,7 +85,6 @@ public abstract class Elevator implements ElevatorPanel {
         elevatorSystem.passengerEnteredElevator(passenger);
     }
 
-    @Override
     public void removePassenger(Passenger passenger, boolean arrived) {
         if (elevatorSystem == null) {
             throw new IllegalStateException("Elevator is not connected to an elevator system");
@@ -99,7 +99,7 @@ public abstract class Elevator implements ElevatorPanel {
     /**
      * Whether this elevator accepts requests to move to a floor.
      * For example, a paternoster elevator does not, because his movement pattern is predetermined forever.
-     * @see #requestDestinationFloor(int)
+     * @see #requestDestinationFloor(int, Passenger)
      */
     public abstract boolean canRequestDestinationFloor();
 
@@ -113,12 +113,16 @@ public abstract class Elevator implements ElevatorPanel {
      * @see #canRequestDestinationFloor()
      */
     @Override
-    public abstract void requestDestinationFloor(int destinationFloor);
+    public abstract void requestDestinationFloor(int destinationFloor, @Nullable Passenger passenger);
 
-    synchronized void addPotentialTarget(int potentialTarget) {
-        if (!potentialTargets.contains(potentialTarget)) {
-            potentialTargets.add(Math.max(Math.min(potentialTarget, maxFloor), minFloor));
-            logger.debug(() -> "Elevator %d on floor %d has added potential target %d, the queue is now %s, potential targets %s".formatted(id, currentFloor, potentialTarget, targets, potentialTargets));
+    synchronized void addPotentialTarget(int potentialTarget, ElevatorListener listener) {
+//        if (!potentialTargets.contains(potentialTarget)) {
+//            potentialTargets.add(Math.max(Math.min(potentialTarget, maxFloor), minFloor));
+//            logger.debug(() -> "Elevator %d on floor %d has added potential target %d, the queue is now %s, potential targets %s".formatted(id, currentFloor, potentialTarget, targets, potentialTargets));
+//        }
+        if (!potentialTargets.containsKey(listener) && !potentialTargets.containsValue(potentialTarget)) {
+            potentialTargets.put(listener, clampFloor(potentialTarget));
+            logger.debug(() -> "Elevator %d on floor %d has added potential target %d, the queue is now %s, potential targets %s".formatted(id, currentFloor, potentialTarget, targets, potentialTargets.values()));
         }
     }
 
@@ -130,7 +134,7 @@ public abstract class Elevator implements ElevatorPanel {
      *  <li>stand still</li>
      *  </ul>
      *  The elevator is supposed to move in a way that it will eventually reach
-     *  the floors requested by Humans via {@link #requestDestinationFloor(int)}, ideally "fast" but also "fair",
+     *  the floors requested by Humans via {@link #requestDestinationFloor(int, Passenger)}, ideally "fast" but also "fair",
      *  meaning that the average time waiting (either in corridor or inside the elevator)
      *  is minimized across all humans.
      *  It is essential that this method updates the currentFloor field accordingly.
@@ -185,6 +189,22 @@ public abstract class Elevator implements ElevatorPanel {
     }
 
     /**
+     * @throws IllegalArgumentException if the specified floor cannot be served by this elevator.
+     */
+    protected void rangeCheck(int floor) {
+        if (!canServe(floor)) {
+            throw new IllegalArgumentException("Elevator cannot serve floor %d, only %d to %d are available".formatted(floor, minFloor, maxFloor));
+        }
+    }
+
+    /**
+     * Returns a floor value clamped between max and min floors.
+     */
+    protected int clampFloor(int floor) {
+        return Math.max(Math.min(floor, maxFloor), minFloor);
+    }
+
+    /**
      * @return whether this elevator is currently on the specified floor
      * or will at some point visit that floor before all its tasks are done.
      */
@@ -198,7 +218,7 @@ public abstract class Elevator implements ElevatorPanel {
      * @implNote a choice was made to use {@code int} over {@link OptionalInt OptionalInt}
      * since the amount of turns cannot be negative
      */
-    public int turnsToVisit(int... floors) {
+    public synchronized int turnsToVisit(int... floors) {
         if (floors.length == 0) {
             return -1;
         }
@@ -208,7 +228,7 @@ public abstract class Elevator implements ElevatorPanel {
 
         Collection<Integer> allTargets = new ArrayList<>(targets.size() + potentialTargets.size());
         allTargets.addAll(targets);
-        allTargets.addAll(potentialTargets);
+        allTargets.addAll(potentialTargets.values());
         Iterator<Integer> targetItr = allTargets.iterator();
         Iterator<Integer> floorItr = Arrays.stream(floors).iterator();
 
