@@ -2,11 +2,9 @@ package org.togetherjava.event.elevator.elevators;
 
 import org.togetherjava.event.elevator.humans.ElevatorListener;
 import org.togetherjava.event.elevator.humans.Passenger;
+import org.togetherjava.event.elevator.util.ConcurrentUtils;
 
 import java.util.*;
-import java.util.concurrent.ForkJoinTask;
-import java.util.concurrent.RecursiveAction;
-import java.util.function.Consumer;
 
 /**
  * System controlling all elevators of a building.
@@ -43,12 +41,12 @@ public final class ElevatorSystem implements FloorPanelSystem {
      */
     public void ready() {
         long stepStart = System.nanoTime();
-        performTasksInParallel(floors.values(), f -> f.fireElevatorRequestEvents(this));
+        ConcurrentUtils.performTasksInParallel(floors.values(), f -> f.fireElevatorRequestEvents(this));
         long stepEnd = System.nanoTime();
         System.out.printf("Elevator requests took %,.3f ms%n", (stepEnd - stepStart) / 1e6);
 
         stepStart = System.nanoTime();
-        performTasksInParallel(floors.values(), Floor::fireElevatorArrivalEvents);
+        ConcurrentUtils.performTasksInParallel(floors.values(), Floor::fireElevatorArrivalEvents);
         stepEnd = System.nanoTime();
         System.out.printf("Elevator arrivals %,.3f ms%n", (stepEnd - stepStart) / 1e6);
     }
@@ -77,43 +75,52 @@ public final class ElevatorSystem implements FloorPanelSystem {
      * @return the id of the elevator that was recommended by the system
      */
     @Override
-    public synchronized int requestElevator(int atFloor, TravelDirection desiredTravelDirection) {
-        if (elevators.isEmpty()) {
-            throw new IllegalStateException("An elevator was requested, but there are none registered in the system");
-        }
+    public int requestElevator(int atFloor, TravelDirection desiredTravelDirection) {
+        Elevator elevator;
 
         int target = calculateAverageTarget(atFloor, desiredTravelDirection)
                 .orElseThrow(() -> new IllegalArgumentException("Impossible to travel %s from floor %d".formatted(desiredTravelDirection.name(), atFloor)));
 
-        Elevator elevator = elevators.stream()
-                .filter(e -> e.canServe(atFloor, atFloor + (desiredTravelDirection == TravelDirection.UP ? 1 : -1)))
-                .min((e1, e2) -> {
-                    // Calculate the time it would take for both elevators to reach the target
-                    int t1 = e1.turnsToVisit(atFloor, target);
-                    int t2 = e2.turnsToVisit(atFloor, target);
-                    // If they both can actually reach it, just compare the numbers
-                    if (t1 >= 0  && t2 >= 0) {
-                        return Integer.compare(t1, t2);
-                    }
-                    // If one of them cannot reach it, prefer the one that can
-                    else if (t1 >= 0) {
-                        return -1;
-                    } else if (t2 >= 0) {
-                        return 1;
-                    }
-                    // At this point, the target lies outside the range of both elevators
-                    // In this case, choose the elevator which boundaries lie closest to the target
-                    return Integer.compare(
-                            Math.min(Math.abs(e1.getMaxFloor() - target), Math.abs(e1.getMinFloor() - target)),
-                            Math.min(Math.abs(e2.getMaxFloor() - target), Math.abs(e2.getMinFloor() - target))
-                    );
-                })
-                .orElseThrow(() -> new IllegalStateException("No elevators can go %s from floor %d".formatted(desiredTravelDirection.name(), atFloor)));
+//        long start = System.nanoTime();
+        synchronized (elevators) {
+            if (elevators.isEmpty()) {
+                throw new IllegalStateException("An elevator was requested, but there are none registered in the system");
+            }
+
+            elevator = elevators.stream()
+                    .filter(e -> e.canServe(atFloor, atFloor + (desiredTravelDirection == TravelDirection.UP ? 1 : -1)))
+                    .min((e1, e2) -> {
+                        // Calculate the time it would take for both elevators to reach the request floor and the target
+                        int t1 = e1.turnsToVisit(atFloor, target);
+                        int t2 = e2.turnsToVisit(atFloor, target);
+                        // If they both can actually reach it, just compare the numbers
+                        if (t1 >= 0 && t2 >= 0) {
+                            return Integer.compare(t1, t2);
+                        }
+                        // If one of them cannot reach it, prefer the one that can
+                        else if (t1 >= 0) {
+                            return -1;
+                        } else if (t2 >= 0) {
+                            return 1;
+                        }
+                        // At this point, the target lies outside the range of both elevators
+                        // In this case, choose the elevator which boundaries lie closest to the target
+                        return Integer.compare(
+                                Math.min(Math.abs(e1.getMaxFloor() - target), Math.abs(e1.getMinFloor() - target)),
+                                Math.min(Math.abs(e2.getMaxFloor() - target), Math.abs(e2.getMinFloor() - target))
+                        );
+                    })
+                    .orElseThrow(() -> new IllegalStateException("No elevators can go %s from floor %d".formatted(desiredTravelDirection.name(), atFloor)));
+
+        }
 
         if (elevator.canRequestDestinationFloor()) {
             elevator.requestDestinationFloor(atFloor);
         }
+
         elevator.addPotentialTarget(target);
+//        long end = System.nanoTime();
+//        System.out.printf("Single elevator request took %,.3f ms%n", (end - start) / 1e6);
         return elevator.getId();
     }
 
@@ -176,7 +183,7 @@ public final class ElevatorSystem implements FloorPanelSystem {
     }
 
     private void moveElevators() {
-        performTasksInParallel(elevators, e -> {
+        ConcurrentUtils.performTasksInParallel(elevators, e -> {
             floors.get(e.getCurrentFloor()).removeElevator(e);
             e.moveOneFloor();
             floors.get(e.getCurrentFloor()).addElevator(e);
@@ -191,25 +198,10 @@ public final class ElevatorSystem implements FloorPanelSystem {
      * an elevator. This helps to introduce new passengers to the system.
      */
     private void fireFloorListeners() {
-        performTasksInParallel(floors.values(), f -> {
+        ConcurrentUtils.performTasksInParallel(floors.values(), f -> {
             f.fireElevatorPassengerEvents();
             f.fireElevatorArrivalEvents();
             f.fireElevatorRequestEvents(this);
         });
-    }
-
-    /**
-     * Construct a {@link ForkJoinTask} for each member of the specified collection that performs the specified action,
-     * then submit them to the common {@link java.util.concurrent.ForkJoinPool ForkJoinPool} and wait for their completion.<br>
-     * This should probably be separated into a utility class, but at the moment isn't used that much to validate that.
-     */
-    private static <V> void performTasksInParallel(Collection<V> targets, Consumer<V> action) {
-        List<? extends ForkJoinTask<?>> tasks = targets.stream().map(target -> new RecursiveAction() {
-            @Override
-            protected void compute() {
-                action.accept(target);
-            }
-        }).toList();
-        ForkJoinTask.invokeAll(tasks);
     }
 }

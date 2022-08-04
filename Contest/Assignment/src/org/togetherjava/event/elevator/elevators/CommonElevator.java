@@ -1,5 +1,7 @@
 package org.togetherjava.event.elevator.elevators;
 
+import org.togetherjava.event.elevator.util.CollectionUtils;
+
 import java.util.*;
 
 /**
@@ -42,7 +44,9 @@ public final class CommonElevator extends Elevator {
 
     /**
      * Add a floor to the task queue of this elevator. Either as a new element at the end of the queue,
-     * or by modifying the last element if it's possible to do so without changing elevator semantics.
+     * or by modifying the last element if it's possible to do so without changing elevator semantics.<br>
+     * After that, try to find an optimal path through all targets and repopulate the targets' collection, if necessary.<br>
+     * It is expected that this method is called in a synchronized context.
      */
     private void addTargetFloor(int targetFloor) {
         if (!targets.isEmpty()) {
@@ -65,37 +69,33 @@ public final class CommonElevator extends Elevator {
         var optimalTargetsRecord = rearrangeTargets(currentFloor, targets);
         var optimalTargets = optimalTargetsRecord.targets();
 
-        boolean shouldReplace = false;
-        if (targets.size() != optimalTargets.size()) {
-            shouldReplace = true;
-        } else {
-            var oldItr = targets.iterator();
-            var newItr = optimalTargets.iterator();
-            for (;oldItr.hasNext() && newItr.hasNext();) {
-                if (!oldItr.next().equals(newItr.next())) {
-                    shouldReplace = true;
-                    break;
-                }
-            }
-        }
-        if (shouldReplace) {
+        if (!CollectionUtils.equals(targets, optimalTargets)) {
             System.out.printf("Elevator on floor %d is rearranging targets after receiving new floor %d, would-be %s, new %s%n", currentFloor, targetFloor, targets, optimalTargets);
             targets.clear();
             targets.addAll(optimalTargets);
         }
 
-        System.out.printf("Elevator %d on floor %d has added floor %d to the queue, the queue is now %s, potential targets %s, queue length in turns is %d%n",
-                id, currentFloor, targetFloor, targets, potentialTargets, optimalTargetsRecord.cost());
+//        System.out.printf("Elevator %d on floor %d has added floor %d to the queue, the queue is now %s, potential targets %s, queue length in turns is %d%n",
+//                id, currentFloor, targetFloor, targets, potentialTargets, optimalTargetsRecord.cost());
     }
 
+    /**
+     * A recursive method that tries to find an optimal path from a specified starting point through all the targets
+     * in the specified deque.<br>
+     * It is assumed that the input deque is in synchronized context and does not contain duplicates.<br>
+     * No guarantee is made that the deque reference contained in the returned record will be the same
+     * or different to the input deque.
+     */
     private static OptimalTargetsAndCost rearrangeTargets(int from, Deque<Integer> targets) {
         int size = targets.size();
         if (size == 0) {
             // No targets - no need to move
             return new OptimalTargetsAndCost(from, targets, 0);
         } else if (size == 1) {
+            // One target - calculate distance to it
             return new OptimalTargetsAndCost(from, targets, Math.abs(targets.getFirst() - from));
         } else if (size == 2) {
+            // Two targets - simple enough to do a manual calculation on them
             int e1 = targets.getFirst();
             int e2 = targets.getLast();
             // c1 represents cost as is, c2 represents cost if the two elements were flipped
@@ -111,7 +111,10 @@ public final class CommonElevator extends Elevator {
             }
             return new OptimalTargetsAndCost(from, targets, cost);
         } else {
+            // Anything with N targets, where N > 2, gets decomposed into N - 1 recursive method calls,
+            // one for each of the new starting points
             return targets.stream()
+                    // First off, decompose and do recursive calls
                     .map(nextFrom -> {
                         var recursiveTargets = new ArrayDeque<Integer>(targets.size() - 1);
                         targets.iterator().forEachRemaining(e -> {
@@ -119,9 +122,11 @@ public final class CommonElevator extends Elevator {
                                 recursiveTargets.addLast(e);
                             }
                         });
-                        return  rearrangeTargets(nextFrom, recursiveTargets);
+                        return rearrangeTargets(nextFrom, recursiveTargets);
                     })
+                    // Then, filter out the result with the smallest potential cost
                     .min(Comparator.comparingInt(r -> r.cost() + Math.abs(r.from() - from)))
+                    // Finally, perform the object creation since
                     .map(r -> {
                         var oldTargets = r.targets();
                         var newTargets = new ArrayDeque<Integer>(oldTargets.size() + 1);
@@ -133,6 +138,13 @@ public final class CommonElevator extends Elevator {
         }
     }
 
+    /**
+     * A record that holds intermediate search results.
+     *
+     * @param from starting point
+     * @param targets a deque holding points to visit, sorted in the optimal order
+     * @param cost the amount of turns it would take to visit all points
+     */
     private record OptimalTargetsAndCost(int from, Deque<Integer> targets, int cost) {}
 
     @Override
@@ -165,7 +177,6 @@ public final class CommonElevator extends Elevator {
         int min = currentFloor;
         int max = currentFloor;
         for (int nextTarget : targets) {
-            // If the target floor is already on the path between floors, return true
             min = Math.min(min, nextTarget);
             max = Math.max(max, nextTarget);
             if (min <= floor && floor <= max) {

@@ -112,10 +112,10 @@ public abstract class Elevator implements ElevatorPanel {
     @Override
     public abstract void requestDestinationFloor(int destinationFloor);
 
-    void addPotentialTarget(int potentialTarget) {
-        if (!willVisitFloor(potentialTarget) && !potentialTargets.contains(potentialTarget)) {
+    synchronized void addPotentialTarget(int potentialTarget) {
+        if (!potentialTargets.contains(potentialTarget)) {
             potentialTargets.add(Math.max(Math.min(potentialTarget, maxFloor), minFloor));
-            System.out.printf("Elevator %d on floor %d has added potential target %d, the queue is now %s, potential targets %s%n", id, currentFloor, potentialTarget, targets, potentialTargets);
+//            System.out.printf("Elevator %d on floor %d has added potential target %d, the queue is now %s, potential targets %s%n", id, currentFloor, potentialTarget, targets, potentialTargets);
         }
     }
 
@@ -142,7 +142,6 @@ public abstract class Elevator implements ElevatorPanel {
             } else {
                 throw new IllegalArgumentException("Elevator has current floor as next target, this is a bug");
             }
-            potentialTargets.remove(currentFloor);
             if (currentFloor == target) {
                 // We arrived at the next target
                 modifyTargetsOnArrival();
