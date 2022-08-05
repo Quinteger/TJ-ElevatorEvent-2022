@@ -35,6 +35,7 @@ public final class Main {
 //        Simulation simulation = MoreSimulations.createSimplePaternosterSimulation();
 //        Simulation simulation = MoreSimulations.createSimpleAdvancedSimulation();
 //        Simulation simulation = MoreSimulations.createNotMarkoSimulation();
+//        Simulation simulation = MoreSimulations.createGoodPaternosterSimulation();
 
         if (simulation.shouldPrintSummary()) {
             simulation.printSummary();

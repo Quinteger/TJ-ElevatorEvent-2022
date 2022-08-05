@@ -113,9 +113,8 @@ public final class ElevatorSystem implements FloorPanelSystem {
 
         if (elevator.canRequestDestinationFloor()) {
             elevator.requestDestinationFloor(atFloor);
+            elevator.addPotentialTarget(target, listener);
         }
-
-        elevator.addPotentialTarget(target, listener);
 
         return elevator.getId();
     }

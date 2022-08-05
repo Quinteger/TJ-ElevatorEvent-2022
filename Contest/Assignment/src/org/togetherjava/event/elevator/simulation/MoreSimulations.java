@@ -5,6 +5,7 @@ import org.togetherjava.event.elevator.elevators.PaternosterElevator;
 import org.togetherjava.event.elevator.humans.Human;
 
 import java.util.List;
+import java.util.stream.IntStream;
 
 /**
  * Separate file to avoid bloating {@link Simulation} with static methods
@@ -68,5 +69,12 @@ public class MoreSimulations {
 
     public static Simulation createNotMarkoSimulation() {
         return Simulation.createRandomSimulation(2, 4, 1_000, 50);
+    }
+
+    public static Simulation createGoodPaternosterSimulation() {
+        return new Simulation(
+                IntStream.rangeClosed(1, 4).mapToObj(i -> new PaternosterElevator(1, 50, (int) Math.ceil(Math.random() * 50))).toList(),
+                IntStream.rangeClosed(1, 1_000).mapToObj(i -> new Human((int) Math.ceil(Math.random() * 50), (int) Math.ceil(Math.random() * 50))).toList()
+        );
     }
 }
