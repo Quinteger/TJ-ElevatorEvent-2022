@@ -18,4 +18,11 @@ public interface Passenger extends ElevatorListener {
      * Passenger's current floor.
      */
     int getCurrentFloor();
+
+    /**
+     * Whether this passenger currently wants to move to a different floor.
+     */
+    default boolean wantsToMove() {
+        return getCurrentFloor() != getDestinationFloor();
+    }
 }

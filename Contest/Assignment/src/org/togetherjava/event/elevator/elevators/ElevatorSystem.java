@@ -30,7 +30,7 @@ public final class ElevatorSystem implements FloorPanelSystem {
     }
 
     public void registerElevatorListener(ElevatorListener listener) {
-        if (listener instanceof Passenger passenger && passenger.getStartingFloor() != passenger.getDestinationFloor()) {
+        if (listener instanceof Passenger passenger && passenger.wantsToMove()) {
             floors.get(passenger.getCurrentFloor()).addPassenger(passenger);
         }
     }

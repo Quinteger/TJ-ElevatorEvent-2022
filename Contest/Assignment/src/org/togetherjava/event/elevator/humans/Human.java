@@ -51,14 +51,20 @@ public final class Human implements Passenger {
         this.currentFloor = startingFloor;
         this.destinationFloor = destinationFloor;
 
-        currentState = State.IDLE;
+        if (startingFloor == destinationFloor) {
+            currentState = State.ARRIVED;
+        } else {
+            currentState = State.IDLE;
+        }
     }
 
+    /**
+     * The system is now ready and the human should leave
+     * their initial IDLE state, requesting an elevator by clicking on the buttons of
+     * the floor panel system. The human will now enter the WAITING_FOR_ELEVATOR state.
+     */
     @Override
     public synchronized void onElevatorSystemReady(FloorPanelSystem floorPanelSystem) {
-        // The system is now ready and the human should leave
-        // their initial IDLE state, requesting an elevator by clicking on the buttons of
-        // the floor panel system. The human will now enter the WAITING_FOR_ELEVATOR state.
         if (currentState == State.IDLE) {
             TravelDirection direction;
             if (currentFloor < destinationFloor) {
@@ -76,13 +82,15 @@ public final class Human implements Passenger {
         }
     }
 
+    /**
+     * If the human is currently waiting for an elevator and
+     * this event represents arrival at the humans current floor, the human can now enter the
+     * elevator and request their actual destination floor. The state has to change to TRAVELING_WITH_ELEVATOR.
+     * If the human is currently traveling with this elevator and the event represents
+     * arrival at the human's destination floor, the human can now exit the elevator.
+     */
     @Override
     public synchronized void onElevatorArrivedAtFloor(ElevatorPanel elevatorPanel) {
-        // If the human is currently waiting for an elevator and
-        // this event represents arrival at the humans current floor, the human can now enter the
-        // elevator and request their actual destination floor. The state has to change to TRAVELING_WITH_ELEVATOR.
-        // If the human is currently traveling with this elevator and the event represents
-        // arrival at the human's destination floor, the human can now exit the elevator.
         if (shouldBoardElevator(elevatorPanel)) {
             if (currentFloor < destinationFloor) {
 
