@@ -66,7 +66,10 @@ public final class ElevatorSystem implements FloorPanelSystem {
      * @param atFloor                the floor to pick up the human at, must be within the range served by the system
      * @param desiredTravelDirection the direction the human wants to travel into,
      *                               can be used for determination of the best elevator
-     * @param listener               (NEW) the listener that requested the operation
+     * @param listener               (NEW) the listener that requested the operation, only used to slightly
+     *                               improve the elevator selection algorithm, think an array of surveillance cameras
+     *                               and fingerprint sensors in buttons (scary to think about though), sanctioned by
+     *                               not marko
      * @return the id of the elevator that was recommended by the system
      */
     @Override
@@ -129,6 +132,10 @@ public final class ElevatorSystem implements FloorPanelSystem {
         return floors.lastEntry().getKey();
     }
 
+    /**
+     * A helper method to determine whether the simulation is still running.
+     * Created to avoid streaming the entire Human registry.
+     */
     public boolean hasActivePassengers() {
         return floors.values().stream()
                 .map(Floor::getActivePassengersCount)

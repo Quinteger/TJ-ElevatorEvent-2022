@@ -53,7 +53,7 @@ public final class Main {
             if (simulation.shouldPrint()) {
                 simulation.prettyPrint();
             }
-//            simulation.printCurrentStatistics();
+            simulation.printCurrentStatistics();
 
             if (simulation.getStepCount() >= 100_000) {
                 throw new IllegalStateException("Simulation aborted. All humans should have arrived"

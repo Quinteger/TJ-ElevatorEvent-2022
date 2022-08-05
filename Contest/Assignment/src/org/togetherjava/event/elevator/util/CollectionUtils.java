@@ -7,12 +7,19 @@ public final class CollectionUtils {
     private CollectionUtils() {}
 
     /**
-     * Equality check for collections that do not override {@link #equals(Object)} for some reason.<br>
-     * Not thread-safe, requires external synchronization.<br>
-     * Exception generation is delegated to iterators themselves.
+     * Equality check for collections that {@link java.util.ArrayDeque do not} override {@link #equals(Object) equals} for some reason.<br>
+     * Will fall back to checking {@link  #equals(Object) equals} first before doing the manual check,
+     * so it's the caller responsibility to determine whether they actually need this method
+     * and avoid potential double iteration.<br>
+     * Not thread-safe, requires external synchronization,
+     * exception generation is delegated to iterators themselves.
      */
     public static boolean equals(Collection<?> c1, Collection<?> c2) {
-        if (c1 == c2) {
+        if (c1 == null || c2 == null) {
+            return c1 == c2;
+        }
+
+        if (c1.equals(c2)) {
             return true;
         }
 

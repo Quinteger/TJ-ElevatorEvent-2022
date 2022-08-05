@@ -73,7 +73,8 @@ public interface ElevatorPanel {
      * Calling the method with {@code null} as second argument will mean that the request was made by the system.
      *
      * @param destinationFloor the desired destination, must be within the range served by this elevator
-     * @param passenger passenger that requested this operation, null if the operation was requested by the system itself
+     * @param passenger passenger that requested this operation, null if the operation was requested by the system itself,
+     *                  sanctioned by not marko
      * @throws UnsupportedOperationException if the operation is not supported by this elevator
      * @see #canRequestDestinationFloor()
      */

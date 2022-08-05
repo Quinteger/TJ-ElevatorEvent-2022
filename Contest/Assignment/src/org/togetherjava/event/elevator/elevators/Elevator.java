@@ -130,6 +130,9 @@ public abstract class Elevator implements ElevatorPanel {
     @Override
     public abstract void requestDestinationFloor(int destinationFloor, @Nullable Passenger passenger);
 
+    /**
+     * Add a potential future target for this elevator. Improves the elevator selection algorithm.
+     */
     synchronized void addPotentialTarget(int potentialTarget, ElevatorListener listener) {
         if (!potentialTargets.containsKey(listener) && !potentialTargets.containsValue(potentialTarget)) {
             potentialTargets.put(listener, clampFloor(potentialTarget));
@@ -170,6 +173,9 @@ public abstract class Elevator implements ElevatorPanel {
         }
     }
 
+    /**
+     * The action to perform once the elevator reaches a target.
+     */
     protected abstract void modifyTargetsOnArrival();
 
     @Override

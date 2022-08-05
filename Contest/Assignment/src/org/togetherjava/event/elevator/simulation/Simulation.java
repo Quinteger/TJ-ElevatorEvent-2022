@@ -169,7 +169,7 @@ public class Simulation {
     }
 
     public void printCurrentStatistics() {
-        System.out.println(humanStatistics.stream()
+        logger.trace(() -> humanStatistics.stream()
                 .collect(Collectors.toMap((HumanStatistics stat) -> stat.getHuman().getCurrentState(), s -> 1, Integer::sum)));
     }
 
